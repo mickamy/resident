@@ -1,3 +1,4 @@
+import { existsSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { runOnce } from "./agent/runner";
@@ -28,11 +29,20 @@ if (!prompt) {
   process.exit(1);
 }
 
-const mcpServers = values.workspace
+let workspacePath: string | undefined;
+if (values.workspace) {
+  workspacePath = resolve(values.workspace);
+  if (!existsSync(workspacePath) || !statSync(workspacePath).isDirectory()) {
+    console.error(`error: workspace "${values.workspace}" is not an existing directory`);
+    process.exit(1);
+  }
+}
+
+const mcpServers = workspacePath
   ? {
       filesystem: {
         command: "npx",
-        args: ["-y", "@modelcontextprotocol/server-filesystem", resolve(values.workspace)],
+        args: ["-y", "@modelcontextprotocol/server-filesystem", workspacePath],
       },
     }
   : undefined;
