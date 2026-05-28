@@ -12,7 +12,7 @@ export type RunOptions = {
 export async function runOnce(prompt: string, options: RunOptions = {}): Promise<string> {
   let finalText: string | null = null;
 
-  for await (const message of query({
+  const q = query({
     prompt,
     options: {
       systemPrompt: options.systemPrompt,
@@ -21,15 +21,21 @@ export async function runOnce(prompt: string, options: RunOptions = {}): Promise
       permissionMode: options.permissionMode,
       allowDangerouslySkipPermissions: options.allowDangerouslySkipPermissions,
     },
-  })) {
-    if (message.type === "result") {
-      if (message.subtype === "success") {
-        finalText = message.result;
-      } else {
-        const details = message.errors.join(", ") || "no details";
-        throw new Error(`Agent run failed (${message.subtype}): ${details}`);
+  });
+
+  try {
+    for await (const message of q) {
+      if (message.type === "result") {
+        if (message.subtype === "success") {
+          finalText = message.result;
+        } else {
+          const details = message.errors.join(", ") || "no details";
+          throw new Error(`Agent run failed (${message.subtype}): ${details}`);
+        }
       }
     }
+  } finally {
+    q.close();
   }
 
   if (finalText === null) {

@@ -1,8 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
 
 mock.module("@anthropic-ai/claude-agent-sdk", () => ({
-  query: ({ prompt }: { prompt: string }) =>
-    (async function* () {
+  query: ({ prompt }: { prompt: string }) => {
+    const gen = (async function* () {
       if (prompt === "throw") {
         yield {
           type: "result",
@@ -27,7 +27,9 @@ mock.module("@anthropic-ai/claude-agent-sdk", () => ({
         subtype: "success",
         result: `echo: ${prompt}`,
       };
-    })(),
+    })();
+    return Object.assign(gen, { close: () => {} });
+  },
 }));
 
 const { runOnce } = await import("./runner");
@@ -39,11 +41,11 @@ describe("runOnce", () => {
   });
 
   test("throws when SDK yields a non-success result", async () => {
-    expect(runOnce("throw")).rejects.toThrow(/Agent run failed \(error_during_execution\)/);
+    await expect(runOnce("throw")).rejects.toThrow(/Agent run failed \(error_during_execution\)/);
   });
 
   test("throws when SDK completes without yielding a success result", async () => {
-    expect(runOnce("no-result")).rejects.toThrow(
+    await expect(runOnce("no-result")).rejects.toThrow(
       /Agent run completed without returning a success result/,
     );
   });
