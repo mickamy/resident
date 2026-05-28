@@ -1,13 +1,16 @@
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { runOnce } from "./agent/runner";
 
-const USAGE = "usage: resident [-s|--system <prompt>] [-m|--model <name>] <prompt>";
+const USAGE =
+  "usage: resident [-s|--system <prompt>] [-m|--model <name>] [-w|--workspace <dir>] <prompt>";
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     system: { type: "string", short: "s" },
     model: { type: "string", short: "m" },
+    workspace: { type: "string", short: "w" },
     help: { type: "boolean", short: "h" },
   },
   allowPositionals: true,
@@ -25,9 +28,21 @@ if (!prompt) {
   process.exit(1);
 }
 
+const mcpServers = values.workspace
+  ? {
+      filesystem: {
+        command: "npx",
+        args: ["-y", "@modelcontextprotocol/server-filesystem", resolve(values.workspace)],
+      },
+    }
+  : undefined;
+
 const result = await runOnce(prompt, {
   systemPrompt: values.system,
   model: values.model,
+  mcpServers,
+  permissionMode: mcpServers ? "bypassPermissions" : undefined,
+  allowDangerouslySkipPermissions: mcpServers ? true : undefined,
 });
 
 console.log(result);
