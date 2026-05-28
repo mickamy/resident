@@ -8,6 +8,6 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
-const app = createApp({ botToken, appToken });
+const { app, botUserId } = await createApp({ botToken, appToken });
 await app.start();
-console.log("resident: connected to Slack via Socket Mode");
+console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);

@@ -1,0 +1,87 @@
+import { describe, expect, test } from "bun:test";
+import type { AppMentionEvent } from "@slack/types";
+import { handleMention, stripBotMention } from "./app";
+
+describe("stripBotMention", () => {
+  test("removes only the bot's own mention", () => {
+    expect(stripBotMention("<@U_BOT> hello", "U_BOT")).toBe("hello");
+  });
+
+  test("preserves mentions of other users", () => {
+    expect(stripBotMention("<@U_BOT> ask <@U_ALICE> to look at it", "U_BOT")).toBe(
+      "ask <@U_ALICE> to look at it",
+    );
+  });
+
+  test("removes multiple bot mentions", () => {
+    expect(stripBotMention("<@U_BOT> <@U_BOT> hi", "U_BOT")).toBe("hi");
+  });
+});
+
+const baseEvent = {
+  ts: "1234.5678",
+  user: "U_USER",
+  channel: "C_CHANNEL",
+} as Partial<AppMentionEvent>;
+
+describe("handleMention", () => {
+  test("posts the runner's result back to the thread", async () => {
+    const sayCalls: { thread_ts: string; text: string }[] = [];
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT> hello" } as AppMentionEvent,
+      say: async (msg) => {
+        sayCalls.push(msg);
+      },
+      botUserId: "U_BOT",
+      run: async (prompt) => `echo: ${prompt}`,
+    });
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "echo: hello" }]);
+  });
+
+  test("replies in the existing thread when thread_ts is present", async () => {
+    const sayCalls: { thread_ts: string; text: string }[] = [];
+    await handleMention({
+      event: {
+        ...baseEvent,
+        text: "<@U_BOT> hello",
+        thread_ts: "9000.0001",
+      } as AppMentionEvent,
+      say: async (msg) => {
+        sayCalls.push(msg);
+      },
+      botUserId: "U_BOT",
+      run: async (prompt) => `echo: ${prompt}`,
+    });
+    expect(sayCalls[0]?.thread_ts).toBe("9000.0001");
+  });
+
+  test("replies with placeholder when text is empty after strip", async () => {
+    const sayCalls: { thread_ts: string; text: string }[] = [];
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT>" } as AppMentionEvent,
+      say: async (msg) => {
+        sayCalls.push(msg);
+      },
+      botUserId: "U_BOT",
+      run: async () => {
+        throw new Error("runner must not be called");
+      },
+    });
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "(empty prompt)" }]);
+  });
+
+  test("posts the error message when runner throws", async () => {
+    const sayCalls: { thread_ts: string; text: string }[] = [];
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT> hello" } as AppMentionEvent,
+      say: async (msg) => {
+        sayCalls.push(msg);
+      },
+      botUserId: "U_BOT",
+      run: async () => {
+        throw new Error("boom");
+      },
+    });
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "error: boom" }]);
+  });
+});
