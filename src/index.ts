@@ -29,25 +29,24 @@ if (!prompt) {
   process.exit(1);
 }
 
-let workspacePath: string | undefined;
-if (values.workspace) {
-  workspacePath = resolve(values.workspace);
-  if (!existsSync(workspacePath) || !statSync(workspacePath).isDirectory()) {
-    console.error(`error: workspace "${values.workspace}" is not an existing directory`);
-    process.exit(1);
-  }
-}
-
-const mcpServers = workspacePath
-  ? {
-      filesystem: {
-        command: "npx",
-        args: ["-y", "@modelcontextprotocol/server-filesystem", workspacePath],
-      },
-    }
-  : undefined;
-
 try {
+  let workspacePath: string | undefined;
+  if (values.workspace) {
+    workspacePath = resolve(values.workspace);
+    if (!existsSync(workspacePath) || !statSync(workspacePath).isDirectory()) {
+      throw new Error(`workspace "${values.workspace}" is not an existing directory`);
+    }
+  }
+
+  const mcpServers = workspacePath
+    ? {
+        filesystem: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem", workspacePath],
+        },
+      }
+    : undefined;
+
   const result = await runOnce(prompt, {
     systemPrompt: values.system,
     model: values.model,
