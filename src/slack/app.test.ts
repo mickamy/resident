@@ -84,4 +84,28 @@ describe("handleMention", () => {
     });
     expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "error: boom" }]);
   });
+
+  test("logs to stderr when say fails, without re-throwing or retrying", async () => {
+    const sayCalls: { thread_ts: string; text: string }[] = [];
+    const errorCalls: unknown[][] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      errorCalls.push(args);
+    };
+    try {
+      await handleMention({
+        event: { ...baseEvent, text: "<@U_BOT> hi" } as AppMentionEvent,
+        say: async (msg) => {
+          sayCalls.push(msg);
+          throw new Error("network down");
+        },
+        botUserId: "U_BOT",
+        run: async () => "ok",
+      });
+    } finally {
+      console.error = originalError;
+    }
+    expect(sayCalls.length).toBe(1);
+    expect(errorCalls.length).toBeGreaterThan(0);
+  });
 });

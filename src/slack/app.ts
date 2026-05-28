@@ -55,17 +55,21 @@ export async function handleMention({
   const text = stripBotMention(event.text, botUserId).trim();
   const thread_ts = event.thread_ts ?? event.ts;
 
+  let replyText: string;
   if (!text) {
-    await say({ thread_ts, text: "(empty prompt)" });
-    return;
+    replyText = "(empty prompt)";
+  } else {
+    try {
+      replyText = await run(text);
+    } catch (error) {
+      replyText = `error: ${error instanceof Error ? error.message : String(error)}`;
+    }
   }
 
   try {
-    const result = await run(text);
-    await say({ thread_ts, text: result });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await say({ thread_ts, text: `error: ${message}` });
+    await say({ thread_ts, text: replyText });
+  } catch (sayError) {
+    console.error("resident: failed to post to Slack:", sayError);
   }
 }
 
