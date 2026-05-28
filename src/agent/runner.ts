@@ -28,6 +28,7 @@ export async function runOnce(prompt: string, options: RunOptions = {}): Promise
       if (message.type === "result") {
         if (message.subtype === "success") {
           finalText = message.result;
+          break;
         } else {
           const details = message.errors.join(", ") || "no details";
           throw new Error(`Agent run failed (${message.subtype}): ${details}`);
