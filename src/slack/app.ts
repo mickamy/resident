@@ -27,11 +27,15 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
   const botUserId = authResult.user_id;
 
   app.event("app_mention", async ({ event, say }) => {
-    await handleMention({
+    // Do not await: Slack's 3 second ack timeout would fire long before runOnce returns.
+    // Bolt acks the event as soon as this listener resolves.
+    handleMention({
       event,
       say,
       botUserId,
       run: runOnce,
+    }).catch((error) => {
+      console.error("resident: unhandled error in handleMention:", error);
     });
   });
 
