@@ -27,6 +27,10 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
   const botUserId = authResult.user_id;
 
   app.event("app_mention", async ({ event, say }) => {
+    // Skip mentions originating from another bot to avoid response loops.
+    if (event.bot_id) {
+      return;
+    }
     // Do not await: Slack's 3 second ack timeout would fire long before runOnce returns.
     // Bolt acks the event as soon as this listener resolves.
     handleMention({
