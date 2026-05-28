@@ -10,7 +10,7 @@ export type RunOptions = {
 };
 
 export async function runOnce(prompt: string, options: RunOptions = {}): Promise<string> {
-  let finalText = "";
+  let finalText: string | null = null;
 
   for await (const message of query({
     prompt,
@@ -30,6 +30,10 @@ export async function runOnce(prompt: string, options: RunOptions = {}): Promise
         throw new Error(`Agent run failed (${message.subtype}): ${details}`);
       }
     }
+  }
+
+  if (finalText === null) {
+    throw new Error("Agent run completed without returning a success result");
   }
 
   return finalText;
