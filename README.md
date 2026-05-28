@@ -17,7 +17,7 @@ Or download a release archive directly from [Releases](https://github.com/mickam
 
 ```bash
 bun install
-bun run src/index.ts "Say 'pong' and nothing else."
+bun start "Say 'pong' and nothing else."
 ```
 
 Useful scripts:
