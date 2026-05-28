@@ -8,6 +8,14 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
-const { app, botUserId } = await createApp({ botToken, appToken });
-await app.start();
-console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
+try {
+  const { app, botUserId } = await createApp({ botToken, appToken });
+  await app.start();
+  console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
+} catch (error) {
+  console.error(
+    "error: failed to start Slack daemon:",
+    error instanceof Error ? error.message : String(error),
+  );
+  process.exit(1);
+}
