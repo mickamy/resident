@@ -1,4 +1,5 @@
 import { App } from "@slack/bolt";
+import type { SayFn } from "@slack/bolt/dist/types/utilities";
 import type { AppMentionEvent } from "@slack/types";
 import { runOnce } from "../agent/runner";
 
@@ -28,9 +29,7 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
   app.event("app_mention", async ({ event, say }) => {
     await handleMention({
       event,
-      say: async (msg) => {
-        await say(msg);
-      },
+      say,
       botUserId,
       run: runOnce,
     });
@@ -41,7 +40,7 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
 
 export type HandleMentionDeps = {
   event: AppMentionEvent;
-  say: (msg: { thread_ts: string; text: string }) => Promise<void>;
+  say: SayFn;
   botUserId: string;
   run: (prompt: string) => Promise<string>;
 };
