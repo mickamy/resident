@@ -1,15 +1,35 @@
 # resident
 
-To install dependencies:
+Slack-resident Claude bot for alert triage and `@mention` Q&A — built on
+the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript) and MCP.
+
+> Status: early skeleton. Nothing is wired up to Slack yet.
+
+## Installation
+
+```bash
+brew install mickamy/tap/resident
+```
+
+Or download a release archive directly from [Releases](https://github.com/mickamy/resident/releases) (`resident-{linux,darwin}-{x64,arm64}.tar.gz`).
+
+## Development
 
 ```bash
 bun install
+bun start "Say 'pong' and nothing else."
 ```
 
-To run:
+Useful scripts:
 
-```bash
-bun run index.ts
-```
+| script              | description                                 |
+|---------------------|---------------------------------------------|
+| `bun run dev`       | watch-mode entry                            |
+| `bun test`          | unit tests                                  |
+| `bun run typecheck` | `tsc --noEmit`                              |
+| `bun run lint`      | Biome lint + format check                   |
+| `bun run build`     | local single-binary build (`dist/resident`) |
 
-This project was created using `bun init` in bun v1.3.14. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## License
+
+[MIT](LICENSE)
