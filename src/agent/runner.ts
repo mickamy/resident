@@ -22,8 +22,13 @@ export async function runOnce(prompt: string, options: RunOptions = {}): Promise
       allowDangerouslySkipPermissions: options.allowDangerouslySkipPermissions,
     },
   })) {
-    if (message.type === "result" && message.subtype === "success") {
-      finalText = message.result;
+    if (message.type === "result") {
+      if (message.subtype === "success") {
+        finalText = message.result;
+      } else {
+        const details = message.errors.join(", ") || "no details";
+        throw new Error(`Agent run failed (${message.subtype}): ${details}`);
+      }
     }
   }
 
