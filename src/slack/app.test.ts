@@ -55,6 +55,17 @@ describe("handleMention", () => {
     expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "echo: hello" }]);
   });
 
+  test("falls back to (no response) when the runner returns whitespace-only text", async () => {
+    const { sayCalls, say } = captureSays();
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT> hi" } as AppMentionEvent,
+      say,
+      botUserId: "U_BOT",
+      run: async () => "   \n  ",
+    });
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "(no response)" }]);
+  });
+
   test("replies in the existing thread when thread_ts is present", async () => {
     const { sayCalls, say } = captureSays();
     await handleMention({

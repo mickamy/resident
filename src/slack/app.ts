@@ -67,7 +67,8 @@ export async function handleMention({
     replyText = "(empty prompt)";
   } else {
     try {
-      replyText = await run(text);
+      // Slack's chat.postMessage rejects empty/whitespace-only text with no_text.
+      replyText = (await run(text)).trim() || "(no response)";
     } catch (error) {
       replyText = `error: ${error instanceof Error ? error.message : String(error)}`;
     }
