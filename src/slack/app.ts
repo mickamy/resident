@@ -11,6 +11,7 @@ export type SlackAppOptions = {
 export type CreateAppResult = {
   app: App;
   botUserId: string;
+  drainActive: (timeoutMs: number) => Promise<void>;
 };
 
 export async function createApp({ botToken, appToken }: SlackAppOptions): Promise<CreateAppResult> {
@@ -26,6 +27,8 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
   }
   const botUserId = authResult.user_id;
 
+  const activePromises = new Set<Promise<unknown>>();
+
   app.event("app_mention", async ({ event, say }) => {
     // Skip mentions originating from another bot to avoid response loops.
     if (event.bot_id) {
@@ -33,7 +36,7 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
     }
     // Do not await: Slack's 3 second ack timeout would fire long before runOnce returns.
     // Bolt acks the event as soon as this listener resolves.
-    handleMention({
+    const p = handleMention({
       event,
       say,
       botUserId,
@@ -41,9 +44,23 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
     }).catch((error) => {
       console.error("resident: unhandled error in handleMention:", error);
     });
+    activePromises.add(p);
+    p.finally(() => activePromises.delete(p));
   });
 
-  return { app, botUserId };
+  const drainActive = async (timeoutMs: number): Promise<void> => {
+    if (activePromises.size === 0) return;
+    const drain = Promise.allSettled([...activePromises]);
+    const timeout = new Promise<"timeout">((resolve) =>
+      setTimeout(() => resolve("timeout"), timeoutMs),
+    );
+    const result = await Promise.race([drain.then(() => "done" as const), timeout]);
+    if (result === "timeout") {
+      console.error(`resident: drain timed out with ${activePromises.size} in-flight handler(s)`);
+    }
+  };
+
+  return { app, botUserId, drainActive };
 }
 
 export type HandleMentionDeps = {

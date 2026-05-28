@@ -8,14 +8,19 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
+const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
+
 try {
-  const { app, botUserId } = await createApp({ botToken, appToken });
+  const { app, botUserId, drainActive } = await createApp({ botToken, appToken });
   await app.start();
   console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
 
   const shutdown = async (signal: string) => {
-    console.log(`resident: received ${signal}, stopping Slack app gracefully...`);
+    console.log(
+      `resident: received ${signal}, draining in-flight handlers (up to ${SHUTDOWN_DRAIN_TIMEOUT_MS}ms)...`,
+    );
     try {
+      await drainActive(SHUTDOWN_DRAIN_TIMEOUT_MS);
       await app.stop();
       process.exit(0);
     } catch (err) {
