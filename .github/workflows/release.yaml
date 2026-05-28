@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          bun build --compile --target=bun-linux-x64 ./src/index.ts --outfile dist/resident-linux-x64
+          bun build --compile --target=bun-linux-arm64 ./src/index.ts --outfile dist/resident-linux-arm64
+          bun build --compile --target=bun-darwin-x64 ./src/index.ts --outfile dist/resident-darwin-x64
+          bun build --compile --target=bun-darwin-arm64 ./src/index.ts --outfile dist/resident-darwin-arm64
+
+      - name: Create release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/resident-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
