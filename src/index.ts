@@ -47,12 +47,16 @@ const mcpServers = workspacePath
     }
   : undefined;
 
-const result = await runOnce(prompt, {
-  systemPrompt: values.system,
-  model: values.model,
-  mcpServers,
-  permissionMode: mcpServers ? "bypassPermissions" : undefined,
-  allowDangerouslySkipPermissions: mcpServers ? true : undefined,
-});
-
-console.log(result);
+try {
+  const result = await runOnce(prompt, {
+    systemPrompt: values.system,
+    model: values.model,
+    mcpServers,
+    permissionMode: mcpServers ? "bypassPermissions" : undefined,
+    allowDangerouslySkipPermissions: mcpServers ? true : undefined,
+  });
+  console.log(result);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
