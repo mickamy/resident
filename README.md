@@ -11,8 +11,7 @@ the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript
 brew install mickamy/tap/resident
 ```
 
-Or download a release archive directly from [Releases](https://github.com/mickamy/resident/releases) (
-`resident-{linux,darwin}-{x64,arm64}.tar.gz`).
+Or download a release archive directly from [Releases](https://github.com/mickamy/resident/releases) (`resident-{linux,darwin}-{x64,arm64}.tar.gz`).
 
 ## Development
 
