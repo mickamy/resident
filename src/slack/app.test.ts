@@ -17,6 +17,16 @@ describe("stripBotMention", () => {
   test("removes multiple bot mentions", () => {
     expect(stripBotMention("<@U_BOT> <@U_BOT> hi", "U_BOT")).toBe("hi");
   });
+
+  test("removes bot mention with a display label", () => {
+    expect(stripBotMention("<@U_BOT|resident> hello", "U_BOT")).toBe("hello");
+  });
+
+  test("preserves labeled mentions of other users", () => {
+    expect(stripBotMention("<@U_BOT|resident> ping <@U_ALICE|alice>", "U_BOT")).toBe(
+      "ping <@U_ALICE|alice>",
+    );
+  });
 });
 
 const baseEvent = {

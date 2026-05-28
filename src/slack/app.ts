@@ -55,7 +55,7 @@ export async function handleMention({
   botUserId,
   run,
 }: HandleMentionDeps): Promise<void> {
-  const text = stripBotMention(event.text, botUserId).trim();
+  const text = stripBotMention(event.text ?? "", botUserId).trim();
   const thread_ts = event.thread_ts ?? event.ts;
 
   let replyText: string;
@@ -77,6 +77,7 @@ export async function handleMention({
 }
 
 export function stripBotMention(text: string, botUserId: string): string {
-  const re = new RegExp(`<@${botUserId}>\\s*`, "g");
+  // Match both <@U123> and <@U123|display_name> forms.
+  const re = new RegExp(`<@${botUserId}(?:\\|[^>]*)?>\\s*`, "g");
   return text.replace(re, "");
 }
