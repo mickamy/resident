@@ -44,7 +44,7 @@ try {
     ? {
         filesystem: {
           command: "npx",
-          args: ["-y", "@modelcontextprotocol/server-filesystem", workspacePath],
+          args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
         },
       }
     : undefined;
