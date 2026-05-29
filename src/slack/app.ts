@@ -38,10 +38,25 @@ export async function createApp({
 
   const activePromises = new Set<Promise<unknown>>();
 
-  app.event("app_mention", async ({ event, say }) => {
+  // Slack Socket Mode is at-least-once: dedup by envelope event_id to avoid duplicate replies on redelivery.
+  const seenEventIds = new Map<string, number>();
+  const DEDUP_TTL_MS = 10 * 60 * 1000;
+
+  app.event("app_mention", async ({ event, say, body }) => {
     // Skip self-mentions to avoid response loops.
     if (event.user === botUserId) {
       return;
+    }
+    const eventId = body.event_id;
+    if (eventId) {
+      const now = Date.now();
+      for (const [id, ts] of seenEventIds) {
+        if (now - ts > DEDUP_TTL_MS) seenEventIds.delete(id);
+      }
+      if (seenEventIds.has(eventId)) {
+        return;
+      }
+      seenEventIds.set(eventId, now);
     }
     if (activePromises.size >= maxConcurrentMentions) {
       void say({
