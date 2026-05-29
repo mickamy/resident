@@ -69,8 +69,8 @@ try {
       `resident: received ${signal}, draining in-flight handlers (up to ${SHUTDOWN_DRAIN_TIMEOUT_MS}ms)...`,
     );
     try {
-      await drainActive(SHUTDOWN_DRAIN_TIMEOUT_MS);
       await app.stop();
+      await drainActive(SHUTDOWN_DRAIN_TIMEOUT_MS);
       process.exit(0);
     } catch (err) {
       console.error("resident: shutdown error:", err);
