@@ -123,19 +123,18 @@ export async function handleMention({
     return;
   }
   const text = stripBotMention(event.text ?? "", botUserId).trim();
+  if (!text) {
+    return;
+  }
   const thread_ts = event.thread_ts ?? event.ts;
 
   let replyText: string;
-  if (!text) {
-    replyText = "(empty prompt)";
-  } else {
-    try {
-      // Slack's chat.postMessage rejects empty/whitespace-only text with no_text.
-      replyText = (await run(text)).trim() || "(no response)";
-    } catch (error) {
-      console.error("resident: runOnce failed:", error);
-      replyText = "error: see logs";
-    }
+  try {
+    // Slack's chat.postMessage rejects empty/whitespace-only text with no_text.
+    replyText = (await run(text)).trim() || "(no response)";
+  } catch (error) {
+    console.error("resident: runOnce failed:", error);
+    replyText = "error: see logs";
   }
 
   try {

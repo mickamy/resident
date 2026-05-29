@@ -81,7 +81,7 @@ describe("handleMention", () => {
     expect(sayCalls[0]?.thread_ts).toBe("9000.0001");
   });
 
-  test("replies with placeholder when text is empty after strip", async () => {
+  test("does not reply when text is empty after strip", async () => {
     const { sayCalls, say } = captureSays();
     await handleMention({
       event: { ...baseEvent, text: "<@U_BOT>" } as AppMentionEvent,
@@ -91,7 +91,7 @@ describe("handleMention", () => {
         throw new Error("runner must not be called");
       },
     });
-    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "(empty prompt)" }]);
+    expect(sayCalls).toEqual([]);
   });
 
   test("posts the error message when runner throws", async () => {
