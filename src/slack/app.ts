@@ -69,6 +69,9 @@ export async function createApp({
       seenEventIds.set(eventId, now);
     }
     if (activePromises.size >= maxConcurrentMentions) {
+      console.warn(
+        `resident: dropping mention from ${event.user ?? "unknown"} (active: ${activePromises.size}, max: ${maxConcurrentMentions})`,
+      );
       void say({
         thread_ts: event.thread_ts ?? event.ts,
         text: "busy — please try again shortly",
@@ -126,6 +129,7 @@ export async function handleMention({
   run,
 }: HandleMentionDeps): Promise<void> {
   if (allowedUsers && (!event.user || !allowedUsers.has(event.user))) {
+    console.warn(`resident: ignoring mention from unauthorized user: ${event.user ?? "unknown"}`);
     return;
   }
   const text = stripBotMention(event.text ?? "", botUserId).trim();
