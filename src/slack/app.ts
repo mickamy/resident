@@ -1,12 +1,13 @@
 import { App } from "@slack/bolt";
 import type { SayFn } from "@slack/bolt/dist/types/utilities";
 import type { AppMentionEvent } from "@slack/types";
-import { runOnce } from "../agent/runner";
+import { type RunOptions, runOnce } from "../agent/runner";
 
 export type SlackAppOptions = {
   botToken: string;
   appToken: string;
   allowedUsers: ReadonlySet<string> | null;
+  runOptions?: RunOptions;
 };
 
 export type CreateAppResult = {
@@ -19,6 +20,7 @@ export async function createApp({
   botToken,
   appToken,
   allowedUsers,
+  runOptions,
 }: SlackAppOptions): Promise<CreateAppResult> {
   const app = new App({
     token: botToken,
@@ -46,7 +48,7 @@ export async function createApp({
       say,
       botUserId,
       allowedUsers,
-      run: runOnce,
+      run: (prompt) => runOnce(prompt, runOptions),
     }).catch((error) => {
       console.error("resident: unhandled error in handleMention:", error);
     });

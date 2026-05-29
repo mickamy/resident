@@ -1,3 +1,6 @@
+import { statSync } from "node:fs";
+import { resolve } from "node:path";
+import type { RunOptions } from "./agent/runner";
 import { createApp } from "./slack/app";
 
 const botToken = process.env.SLACK_BOT_TOKEN;
@@ -26,8 +29,38 @@ if (allowedUsers === null) {
   );
 }
 
+const rawWorkspace = process.env.RESIDENT_WORKSPACE?.trim();
+let workspacePath: string | undefined;
+if (rawWorkspace) {
+  workspacePath = resolve(rawWorkspace);
+  if (!statSync(workspacePath, { throwIfNoEntry: false })?.isDirectory()) {
+    console.error(`error: RESIDENT_WORKSPACE "${rawWorkspace}" is not an existing directory`);
+    process.exit(1);
+  }
+}
+
+const runOptions: RunOptions = {
+  systemPrompt: process.env.RESIDENT_SYSTEM_PROMPT?.trim() || undefined,
+  model: process.env.RESIDENT_MODEL?.trim() || undefined,
+  mcpServers: workspacePath
+    ? {
+        filesystem: {
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
+        },
+      }
+    : undefined,
+  permissionMode: workspacePath ? "bypassPermissions" : undefined,
+  allowDangerouslySkipPermissions: workspacePath ? true : undefined,
+};
+
 try {
-  const { app, botUserId, drainActive } = await createApp({ botToken, appToken, allowedUsers });
+  const { app, botUserId, drainActive } = await createApp({
+    botToken,
+    appToken,
+    allowedUsers,
+    runOptions,
+  });
   await app.start();
   console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
 
