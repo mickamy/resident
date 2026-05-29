@@ -100,7 +100,7 @@ try {
         shutdownAbortController.abort();
         await new Promise((r) => setTimeout(r, 1_000));
       }
-      process.exit(0);
+      process.exit(drainResult === "timeout" ? 1 : 0);
     } catch (err) {
       console.error("resident: shutdown error:", err);
       process.exit(1);
