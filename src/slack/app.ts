@@ -54,8 +54,14 @@ export async function createApp({
     const eventId = body.event_id;
     if (eventId) {
       const now = Date.now();
+      // Map preserves insertion order, so the oldest (and thus first-to-expire) entries
+      // are at the front. Stop as soon as we hit one that hasn't expired yet.
       for (const [id, ts] of seenEventIds) {
-        if (now - ts > DEDUP_TTL_MS) seenEventIds.delete(id);
+        if (now - ts > DEDUP_TTL_MS) {
+          seenEventIds.delete(id);
+        } else {
+          break;
+        }
       }
       if (seenEventIds.has(eventId)) {
         return;
