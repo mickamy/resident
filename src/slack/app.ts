@@ -39,8 +39,8 @@ export async function createApp({
   const activePromises = new Set<Promise<unknown>>();
 
   app.event("app_mention", async ({ event, say }) => {
-    // Skip mentions originating from another bot to avoid response loops.
-    if (event.bot_id) {
+    // Skip self-mentions to avoid response loops.
+    if (event.user === botUserId) {
       return;
     }
     if (activePromises.size >= maxConcurrentMentions) {
