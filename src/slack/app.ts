@@ -13,7 +13,7 @@ export type SlackAppOptions = {
 export type CreateAppResult = {
   app: App;
   botUserId: string;
-  drainActive: (timeoutMs: number) => Promise<void>;
+  drainActive: (timeoutMs: number) => Promise<"done" | "timeout">;
 };
 
 export async function createApp({
@@ -56,8 +56,8 @@ export async function createApp({
     p.finally(() => activePromises.delete(p));
   });
 
-  const drainActive = async (timeoutMs: number): Promise<void> => {
-    if (activePromises.size === 0) return;
+  const drainActive = async (timeoutMs: number): Promise<"done" | "timeout"> => {
+    if (activePromises.size === 0) return "done";
     const drain = Promise.allSettled([...activePromises]);
     const timeout = new Promise<"timeout">((resolve) =>
       setTimeout(() => resolve("timeout"), timeoutMs),
@@ -66,6 +66,7 @@ export async function createApp({
     if (result === "timeout") {
       console.error(`resident: drain timed out with ${activePromises.size} in-flight handler(s)`);
     }
+    return result;
   };
 
   return { app, botUserId, drainActive };

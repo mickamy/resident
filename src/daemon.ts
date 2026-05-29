@@ -11,7 +11,16 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
-const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
+const rawTimeout = process.env.RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS?.trim();
+const SHUTDOWN_DRAIN_TIMEOUT_MS = rawTimeout ? Number(rawTimeout) : 60_000;
+if (!Number.isFinite(SHUTDOWN_DRAIN_TIMEOUT_MS) || SHUTDOWN_DRAIN_TIMEOUT_MS < 0) {
+  console.error(
+    `error: invalid RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS: "${rawTimeout}" (expected non-negative integer)`,
+  );
+  process.exit(1);
+}
+
+const shutdownAbortController = new AbortController();
 
 const rawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
 const allowedUsers = rawAllowed
@@ -52,6 +61,7 @@ const runOptions: RunOptions = {
     : undefined,
   permissionMode: workspacePath ? "bypassPermissions" : undefined,
   allowDangerouslySkipPermissions: workspacePath ? true : undefined,
+  abortController: shutdownAbortController,
 };
 
 try {
@@ -70,7 +80,12 @@ try {
     );
     try {
       await app.stop();
-      await drainActive(SHUTDOWN_DRAIN_TIMEOUT_MS);
+      const drainResult = await drainActive(SHUTDOWN_DRAIN_TIMEOUT_MS);
+      if (drainResult === "timeout") {
+        console.error("resident: aborting in-flight handlers");
+        shutdownAbortController.abort();
+        await new Promise((r) => setTimeout(r, 1_000));
+      }
       process.exit(0);
     } catch (err) {
       console.error("resident: shutdown error:", err);

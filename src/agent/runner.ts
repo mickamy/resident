@@ -7,6 +7,7 @@ export type RunOptions = {
   mcpServers?: Options["mcpServers"];
   permissionMode?: Options["permissionMode"];
   allowDangerouslySkipPermissions?: boolean;
+  abortController?: AbortController;
 };
 
 export async function runOnce(prompt: string, options: RunOptions = {}): Promise<string> {
@@ -20,6 +21,7 @@ export async function runOnce(prompt: string, options: RunOptions = {}): Promise
       mcpServers: options.mcpServers,
       permissionMode: options.permissionMode,
       allowDangerouslySkipPermissions: options.allowDangerouslySkipPermissions,
+      abortController: options.abortController,
     },
   });
 
