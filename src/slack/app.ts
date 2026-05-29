@@ -144,8 +144,12 @@ export async function handleMention({
   }
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function stripBotMention(text: string, botUserId: string): string {
   // Match both <@U123> and <@U123|display_name> forms.
-  const re = new RegExp(`<@${botUserId}(?:\\|[^>]*)?>\\s*`, "g");
+  const re = new RegExp(`<@${escapeRegExp(botUserId)}(?:\\|[^>]*)?>\\s*`, "g");
   return text.replace(re, "");
 }
