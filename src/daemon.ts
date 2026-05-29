@@ -13,7 +13,7 @@ if (!botToken || !appToken) {
 
 const rawTimeout = process.env.RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS?.trim();
 const SHUTDOWN_DRAIN_TIMEOUT_MS = rawTimeout ? Number(rawTimeout) : 60_000;
-if (!Number.isFinite(SHUTDOWN_DRAIN_TIMEOUT_MS) || SHUTDOWN_DRAIN_TIMEOUT_MS < 0) {
+if (!Number.isInteger(SHUTDOWN_DRAIN_TIMEOUT_MS) || SHUTDOWN_DRAIN_TIMEOUT_MS < 0) {
   console.error(
     `error: invalid RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS: "${rawTimeout}" (expected non-negative integer)`,
   );
