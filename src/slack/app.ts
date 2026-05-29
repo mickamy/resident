@@ -47,6 +47,10 @@ export async function createApp({
     if (event.user === botUserId) {
       return;
     }
+    // Skip subtype-bearing events (message_changed, message_deleted) so edits/deletes don't re-trigger.
+    if (event.subtype) {
+      return;
+    }
     const eventId = body.event_id;
     if (eventId) {
       const now = Date.now();
