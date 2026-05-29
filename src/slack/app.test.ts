@@ -107,6 +107,32 @@ describe("handleMention", () => {
     expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "error: see logs" }]);
   });
 
+  test("skips mention when allowedUsers is set and event.user is not in it", async () => {
+    const { sayCalls, say } = captureSays();
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT> hello", user: "U_BOB" } as AppMentionEvent,
+      say,
+      botUserId: "U_BOT",
+      allowedUsers: new Set(["U_ALICE"]),
+      run: async () => {
+        throw new Error("runner must not be called");
+      },
+    });
+    expect(sayCalls).toEqual([]);
+  });
+
+  test("processes mention when event.user is in allowedUsers", async () => {
+    const { sayCalls, say } = captureSays();
+    await handleMention({
+      event: { ...baseEvent, text: "<@U_BOT> hello", user: "U_ALICE" } as AppMentionEvent,
+      say,
+      botUserId: "U_BOT",
+      allowedUsers: new Set(["U_ALICE"]),
+      run: async (prompt) => `echo: ${prompt}`,
+    });
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "echo: hello" }]);
+  });
+
   test("logs to stderr when say fails, without re-throwing or retrying", async () => {
     let sayCount = 0;
     const errorCalls: unknown[][] = [];

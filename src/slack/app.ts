@@ -6,6 +6,7 @@ import { runOnce } from "../agent/runner";
 export type SlackAppOptions = {
   botToken: string;
   appToken: string;
+  allowedUsers: ReadonlySet<string> | null;
 };
 
 export type CreateAppResult = {
@@ -14,7 +15,11 @@ export type CreateAppResult = {
   drainActive: (timeoutMs: number) => Promise<void>;
 };
 
-export async function createApp({ botToken, appToken }: SlackAppOptions): Promise<CreateAppResult> {
+export async function createApp({
+  botToken,
+  appToken,
+  allowedUsers,
+}: SlackAppOptions): Promise<CreateAppResult> {
   const app = new App({
     token: botToken,
     appToken,
@@ -40,6 +45,7 @@ export async function createApp({ botToken, appToken }: SlackAppOptions): Promis
       event,
       say,
       botUserId,
+      allowedUsers,
       run: runOnce,
     }).catch((error) => {
       console.error("resident: unhandled error in handleMention:", error);
@@ -67,6 +73,7 @@ export type HandleMentionDeps = {
   event: AppMentionEvent;
   say: SayFn;
   botUserId: string;
+  allowedUsers?: ReadonlySet<string> | null;
   run: (prompt: string) => Promise<string>;
 };
 
@@ -74,8 +81,12 @@ export async function handleMention({
   event,
   say,
   botUserId,
+  allowedUsers,
   run,
 }: HandleMentionDeps): Promise<void> {
+  if (allowedUsers && (!event.user || !allowedUsers.has(event.user))) {
+    return;
+  }
   const text = stripBotMention(event.text ?? "", botUserId).trim();
   const thread_ts = event.thread_ts ?? event.ts;
 

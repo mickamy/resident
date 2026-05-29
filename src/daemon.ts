@@ -10,8 +10,24 @@ if (!botToken || !appToken) {
 
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
 
+const rawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
+const allowedUsers = rawAllowed
+  ? new Set(
+      rawAllowed
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
+  : null;
+
+if (allowedUsers === null) {
+  console.warn(
+    "resident: RESIDENT_ALLOWED_USERS not set — every channel member can invoke the agent. Set it to a CSV of Slack user IDs to restrict access.",
+  );
+}
+
 try {
-  const { app, botUserId, drainActive } = await createApp({ botToken, appToken });
+  const { app, botUserId, drainActive } = await createApp({ botToken, appToken, allowedUsers });
   await app.start();
   console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
 
