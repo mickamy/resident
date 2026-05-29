@@ -8,6 +8,7 @@ export type SlackAppOptions = {
   appToken: string;
   allowedUsers: ReadonlySet<string> | null;
   runOptions?: RunOptions;
+  maxConcurrentMentions?: number;
 };
 
 export type CreateAppResult = {
@@ -21,6 +22,7 @@ export async function createApp({
   appToken,
   allowedUsers,
   runOptions,
+  maxConcurrentMentions = Number.POSITIVE_INFINITY,
 }: SlackAppOptions): Promise<CreateAppResult> {
   const app = new App({
     token: botToken,
@@ -39,6 +41,15 @@ export async function createApp({
   app.event("app_mention", async ({ event, say }) => {
     // Skip mentions originating from another bot to avoid response loops.
     if (event.bot_id) {
+      return;
+    }
+    if (activePromises.size >= maxConcurrentMentions) {
+      void say({
+        thread_ts: event.thread_ts ?? event.ts,
+        text: "busy — please try again shortly",
+      }).catch((err) => {
+        console.error("resident: failed to post busy notice:", err);
+      });
       return;
     }
     // Do not await: Slack's 3 second ack timeout would fire long before runOnce returns.

@@ -22,6 +22,15 @@ if (!Number.isFinite(SHUTDOWN_DRAIN_TIMEOUT_MS) || SHUTDOWN_DRAIN_TIMEOUT_MS < 0
 
 const shutdownAbortController = new AbortController();
 
+const rawMaxConcurrent = process.env.RESIDENT_MAX_CONCURRENT_MENTIONS?.trim();
+const maxConcurrentMentions = rawMaxConcurrent ? Number(rawMaxConcurrent) : 10;
+if (!Number.isInteger(maxConcurrentMentions) || maxConcurrentMentions < 1) {
+  console.error(
+    `error: invalid RESIDENT_MAX_CONCURRENT_MENTIONS: "${rawMaxConcurrent}" (expected positive integer)`,
+  );
+  process.exit(1);
+}
+
 const rawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
 const allowedUsers = rawAllowed
   ? new Set(
@@ -70,6 +79,7 @@ try {
     appToken,
     allowedUsers,
     runOptions,
+    maxConcurrentMentions,
   });
   await app.start();
   console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
