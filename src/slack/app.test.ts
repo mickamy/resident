@@ -104,7 +104,7 @@ describe("handleMention", () => {
         throw new Error("boom");
       },
     });
-    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "error: boom" }]);
+    expect(sayCalls).toEqual([{ thread_ts: "1234.5678", text: "error: see logs" }]);
   });
 
   test("logs to stderr when say fails, without re-throwing or retrying", async () => {

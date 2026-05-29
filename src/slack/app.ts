@@ -87,7 +87,8 @@ export async function handleMention({
       // Slack's chat.postMessage rejects empty/whitespace-only text with no_text.
       replyText = (await run(text)).trim() || "(no response)";
     } catch (error) {
-      replyText = `error: ${error instanceof Error ? error.message : String(error)}`;
+      console.error("resident: runOnce failed:", error);
+      replyText = "error: see logs";
     }
   }
 
