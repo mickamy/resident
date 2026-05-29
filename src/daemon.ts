@@ -81,10 +81,14 @@ try {
     runOptions,
     maxConcurrentMentions,
   });
-  await app.start();
-  console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
 
+  let shuttingDown = false;
   const shutdown = async (signal: string) => {
+    if (shuttingDown) {
+      console.log(`resident: ${signal} received while already shutting down, ignoring`);
+      return;
+    }
+    shuttingDown = true;
     console.log(
       `resident: received ${signal}, draining in-flight handlers (up to ${SHUTDOWN_DRAIN_TIMEOUT_MS}ms)...`,
     );
@@ -108,6 +112,9 @@ try {
   process.on("SIGTERM", () => {
     void shutdown("SIGTERM");
   });
+
+  await app.start();
+  console.log(`resident: connected to Slack via Socket Mode (bot user_id = ${botUserId})`);
 } catch (error) {
   console.error(
     "error: failed to start Slack daemon:",
