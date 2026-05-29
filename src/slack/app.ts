@@ -89,10 +89,12 @@ export async function createApp({
   const drainActive = async (timeoutMs: number): Promise<"done" | "timeout"> => {
     if (activePromises.size === 0) return "done";
     const drain = Promise.allSettled([...activePromises]);
-    const timeout = new Promise<"timeout">((resolve) =>
-      setTimeout(() => resolve("timeout"), timeoutMs),
-    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), timeoutMs);
+    });
     const result = await Promise.race([drain.then(() => "done" as const), timeout]);
+    if (timer) clearTimeout(timer);
     if (result === "timeout") {
       console.error(`resident: drain timed out with ${activePromises.size} in-flight handler(s)`);
     }
