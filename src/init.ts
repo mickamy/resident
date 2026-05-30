@@ -45,6 +45,14 @@ if (existsSync(path)) {
   process.exit(1);
 }
 
-await mkdir(dirname(path), { recursive: true });
-await writeFile(path, SKELETON);
-console.log(`resident: wrote skeleton config to ${path}`);
+try {
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, SKELETON);
+  console.log(`resident: wrote skeleton config to ${path}`);
+} catch (error) {
+  console.error(
+    `error: failed to write config to ${path}:`,
+    error instanceof Error ? error.message : String(error),
+  );
+  process.exit(1);
+}
