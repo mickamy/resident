@@ -2,6 +2,11 @@ import { statSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
 
+export const DEFAULTS = {
+  mention: { max_concurrent: 10 },
+  shutdown: { drain_timeout_ms: 60_000 },
+} as const;
+
 // Variables that change how a process loads code or resolves binaries.
 // Letting a config file inject these into spawned subprocesses is effectively code execution.
 const DANGEROUS_ENV_KEYS = new Set([
@@ -93,7 +98,7 @@ const MentionSchema = z
         (v) => v === null || v.length > 0,
         "allowed_users cannot be empty; use null to allow every channel member",
       ),
-    max_concurrent: z.number().int().positive().default(10),
+    max_concurrent: z.number().int().positive().default(DEFAULTS.mention.max_concurrent),
     prompt: z.string().default(""),
   })
   .strict()
@@ -101,7 +106,7 @@ const MentionSchema = z
 
 const ShutdownSchema = z
   .object({
-    drain_timeout_ms: z.number().int().nonnegative().default(60_000),
+    drain_timeout_ms: z.number().int().nonnegative().default(DEFAULTS.shutdown.drain_timeout_ms),
   })
   .strict()
   .prefault({});

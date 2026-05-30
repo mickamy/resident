@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { parseArgs } from "node:util";
+import { DEFAULTS } from "./config/schema";
 
 const home = homedir();
 const DEFAULT_PATH = home ? join(home, ".resident", "config.toml") : null;
@@ -12,11 +13,11 @@ const SKELETON = `# resident configuration
 [mention]
 # null => allow every channel member; otherwise an array of Slack user IDs.
 # allowed_users = ["U_ALICE", "U_BOB"]
-max_concurrent = 10
+max_concurrent = ${DEFAULTS.mention.max_concurrent}
 # prompt = ""  # optional system prompt override for mention mode
 
 [shutdown]
-drain_timeout_ms = 60000
+drain_timeout_ms = ${DEFAULTS.shutdown.drain_timeout_ms}
 
 [runner]
 # model = "claude-opus-4-7"
