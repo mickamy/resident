@@ -82,15 +82,18 @@ if (envRawWorkspace) {
 }
 const workspacePath = cfg?.runner.workspace?.path ?? envWorkspacePath;
 
-const filesystemMcp = workspacePath
-  ? {
-      filesystem: {
-        command: "npx",
-        args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
-      },
-    }
-  : {};
-const mcpServers = { ...(cfg?.mcp_servers ?? {}), ...filesystemMcp };
+const mcpServers: Record<
+  string,
+  { command: string; args: string[]; env?: Record<string, string> }
+> = {
+  ...(cfg?.mcp_servers ?? {}),
+};
+if (workspacePath) {
+  mcpServers.filesystem = {
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
+  };
+}
 const hasMcp = Object.keys(mcpServers).length > 0;
 
 const runOptions: RunOptions = {
