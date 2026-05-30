@@ -47,7 +47,7 @@ if (existsSync(path)) {
 
 try {
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, SKELETON);
+  await writeFile(path, SKELETON, { mode: 0o600 });
   console.log(`resident: wrote skeleton config to ${path}`);
 } catch (error) {
   console.error(
