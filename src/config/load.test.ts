@@ -61,7 +61,7 @@ describe("ResidentConfigSchema", () => {
     expect(cfg.mention.max_concurrent).toBe(10);
     expect(cfg.mention.allowed_users).toBeNull();
     expect(cfg.shutdown.drain_timeout_ms).toBe(60_000);
-    expect(cfg.runner.system_prompt).toBe("");
+    expect(cfg.runner.system_prompt).toBeUndefined();
     expect(cfg.triggers.alerts).toEqual([]);
     expect(cfg.mcp_servers).toEqual({});
   });

@@ -106,7 +106,7 @@ const RunnerWorkspaceSchema = z
 const RunnerSchema = z
   .object({
     model: z.string().optional(),
-    system_prompt: z.string().default(""),
+    system_prompt: z.string().optional(),
     workspace: RunnerWorkspaceSchema.optional(),
   })
   .strict()
