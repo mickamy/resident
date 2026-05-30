@@ -49,8 +49,34 @@ export async function loadConfig(
   path: string,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<ResidentConfig> {
-  const raw = await readFile(path, "utf8");
-  const parsed = parseToml(raw);
-  const interpolated = interpolateEnv(parsed, env);
-  return ResidentConfigSchema.parse(interpolated);
+  let raw: string;
+  try {
+    raw = await readFile(path, "utf8");
+  } catch (error) {
+    throw new Error(`failed to read config at ${path}: ${describe(error)}`);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = parseToml(raw);
+  } catch (error) {
+    throw new Error(`failed to parse TOML at ${path}: ${describe(error)}`);
+  }
+
+  let interpolated: unknown;
+  try {
+    interpolated = interpolateEnv(parsed, env);
+  } catch (error) {
+    throw new Error(`failed to interpolate env in ${path}: ${describe(error)}`);
+  }
+
+  try {
+    return ResidentConfigSchema.parse(interpolated);
+  } catch (error) {
+    throw new Error(`config at ${path} did not match schema: ${describe(error)}`);
+  }
+}
+
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
