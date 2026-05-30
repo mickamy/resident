@@ -17,6 +17,11 @@ describe("interpolateEnv", () => {
     expect(interpolateEnv("${MISSING}", {})).toBe("");
   });
 
+  test("returns empty string when env value is not a string", () => {
+    expect(interpolateEnv("${X}", { X: 42 as unknown as string })).toBe("");
+    expect(interpolateEnv("${X}", { X: (() => "fn") as unknown as string })).toBe("");
+  });
+
   test("does not touch strings without ${VAR}", () => {
     expect(interpolateEnv("plain text", { X: "1" })).toBe("plain text");
   });

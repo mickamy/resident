@@ -6,7 +6,11 @@ const ENV_VAR_RE = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
 export function interpolateEnv(value: unknown, env: NodeJS.ProcessEnv = process.env): unknown {
   if (typeof value === "string") {
-    return value.replace(ENV_VAR_RE, (_, name) => env[name] ?? "");
+    return value.replace(ENV_VAR_RE, (_, name) => {
+      const v = env[name];
+      // Guard against inherited prototype properties (e.g., env.toString returning a function).
+      return typeof v === "string" ? v : "";
+    });
   }
   if (Array.isArray(value)) {
     return value.map((v) => interpolateEnv(v, env));
