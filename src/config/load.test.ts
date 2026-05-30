@@ -32,6 +32,16 @@ describe("interpolateEnv", () => {
     expect(interpolateEnv(true, {})).toBe(true);
     expect(interpolateEnv(null, {})).toBe(null);
   });
+
+  test("preserves non-plain objects like Date without flattening them", () => {
+    const d = new Date("2026-12-31T00:00:00Z");
+    const out = interpolateEnv({ created: d, name: "${X}" }, { X: "y" }) as {
+      created: Date;
+      name: string;
+    };
+    expect(out.created).toBe(d);
+    expect(out.name).toBe("y");
+  });
 });
 
 describe("ResidentConfigSchema", () => {

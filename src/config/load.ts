@@ -12,6 +12,12 @@ export function interpolateEnv(value: unknown, env: NodeJS.ProcessEnv = process.
     return value.map((v) => interpolateEnv(v, env));
   }
   if (value && typeof value === "object") {
+    // smol-toml parses TOML datetimes into Date objects; only recurse into
+    // plain objects so we don't strip non-plain instances down to `{}`.
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      return value;
+    }
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
       out[k] = interpolateEnv(v, env);
