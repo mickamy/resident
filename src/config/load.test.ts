@@ -13,13 +13,19 @@ describe("interpolateEnv", () => {
     expect(interpolateEnv("${A}-${B}-${A}", { A: "x", B: "y" })).toBe("x-y-x");
   });
 
-  test("replaces unmatched vars with an empty string", () => {
-    expect(interpolateEnv("${MISSING}", {})).toBe("");
+  test("throws when an env var is undefined", () => {
+    expect(() => interpolateEnv("${MISSING}", {})).toThrow(/undefined env vars: MISSING/);
   });
 
-  test("returns empty string when env value is not a string", () => {
-    expect(interpolateEnv("${X}", { X: 42 as unknown as string })).toBe("");
-    expect(interpolateEnv("${X}", { X: (() => "fn") as unknown as string })).toBe("");
+  test("throws when env value is not a string", () => {
+    expect(() => interpolateEnv("${X}", { X: 42 as unknown as string })).toThrow();
+    expect(() => interpolateEnv("${X}", { X: (() => "fn") as unknown as string })).toThrow();
+  });
+
+  test("reports every undefined env var in a single error", () => {
+    expect(() => interpolateEnv({ a: "${A}", b: "${B}" }, {})).toThrow(
+      /undefined env vars: A, B/,
+    );
   });
 
   test("does not touch strings without ${VAR}", () => {

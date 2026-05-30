@@ -5,15 +5,29 @@ import { type ResidentConfig, ResidentConfigSchema } from "./schema";
 const ENV_VAR_RE = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
 
 export function interpolateEnv(value: unknown, env: NodeJS.ProcessEnv = process.env): unknown {
+  const missing: string[] = [];
+  const out = walk(value, env, missing);
+  if (missing.length > 0) {
+    const unique = [...new Set(missing)];
+    throw new Error(`config references undefined env vars: ${unique.join(", ")}`);
+  }
+  return out;
+}
+
+function walk(value: unknown, env: NodeJS.ProcessEnv, missing: string[]): unknown {
   if (typeof value === "string") {
     return value.replace(ENV_VAR_RE, (_, name) => {
       const v = env[name];
       // Guard against inherited prototype properties (e.g., env.toString returning a function).
-      return typeof v === "string" ? v : "";
+      if (typeof v !== "string") {
+        missing.push(name);
+        return "";
+      }
+      return v;
     });
   }
   if (Array.isArray(value)) {
-    return value.map((v) => interpolateEnv(v, env));
+    return value.map((v) => walk(v, env, missing));
   }
   if (value && typeof value === "object") {
     // smol-toml parses TOML datetimes into Date objects; only recurse into
@@ -24,7 +38,7 @@ export function interpolateEnv(value: unknown, env: NodeJS.ProcessEnv = process.
     }
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {
-      out[k] = interpolateEnv(v, env);
+      out[k] = walk(v, env, missing);
     }
     return out;
   }
