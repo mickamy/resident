@@ -15,6 +15,11 @@ describe("interpolateEnv", () => {
     expect(interpolateEnv("${A}-${B}-${A}", { A: "x", B: "y" })).toBe("x-y-x");
   });
 
+  test("substitutes mixed-case env var names", () => {
+    expect(interpolateEnv("${path_to_x}", { path_to_x: "/a" })).toBe("/a");
+    expect(interpolateEnv("${MyVar}", { MyVar: "yes" })).toBe("yes");
+  });
+
   test("throws when an env var is undefined", () => {
     expect(() => interpolateEnv("${MISSING}", {})).toThrow(/undefined env vars: MISSING/);
   });

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { parse as parseToml } from "smol-toml";
 import { type ResidentConfig, ResidentConfigSchema } from "./schema";
 
-const ENV_VAR_RE = /\$\{([A-Z_][A-Z0-9_]*)\}/g;
+const ENV_VAR_RE = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
 export function interpolateEnv(value: unknown, env: NodeJS.ProcessEnv = process.env): unknown {
   const missing: string[] = [];
