@@ -16,7 +16,7 @@ const DANGEROUS_ENV_KEYS = new Set([
   "PATH",
 ]);
 
-const McpStdioServerSchema = z
+const McpStdioServerEntrySchema = z
   .object({
     name: z.string().min(1),
     command: z.string().min(1),
@@ -30,6 +30,30 @@ const McpStdioServerSchema = z
       ),
   })
   .strict();
+
+const McpStdioServersSchema = z
+  .array(McpStdioServerEntrySchema)
+  .default([])
+  .superRefine((arr, ctx) => {
+    const seen = new Set<string>();
+    for (const [i, entry] of arr.entries()) {
+      if (seen.has(entry.name)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `duplicate mcp_servers entry: ${entry.name}`,
+          path: [i, "name"],
+        });
+      }
+      seen.add(entry.name);
+    }
+  })
+  .transform((arr) => {
+    const record: Record<string, Omit<z.infer<typeof McpStdioServerEntrySchema>, "name">> = {};
+    for (const { name, ...rest } of arr) {
+      record[name] = rest;
+    }
+    return record;
+  });
 
 const AlertTriggerSchema = z
   .object({
@@ -83,11 +107,11 @@ export const ResidentConfigSchema = z
     shutdown: ShutdownSchema,
     runner: RunnerSchema,
     triggers: TriggersSchema,
-    mcp_servers: z.array(McpStdioServerSchema).default([]),
+    mcp_servers: McpStdioServersSchema,
   })
   .strict()
   .prefault({});
 
 export type ResidentConfig = z.infer<typeof ResidentConfigSchema>;
-export type McpStdioServer = z.infer<typeof McpStdioServerSchema>;
+export type McpStdioServerEntry = z.infer<typeof McpStdioServerEntrySchema>;
 export type AlertTrigger = z.infer<typeof AlertTriggerSchema>;

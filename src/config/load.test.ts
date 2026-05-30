@@ -61,7 +61,7 @@ describe("ResidentConfigSchema", () => {
     expect(cfg.shutdown.drain_timeout_ms).toBe(60_000);
     expect(cfg.runner.system_prompt).toBe("");
     expect(cfg.triggers.alerts).toEqual([]);
-    expect(cfg.mcp_servers).toEqual([]);
+    expect(cfg.mcp_servers).toEqual({});
   });
 
   test("parses a minimal TOML config", () => {
@@ -73,6 +73,17 @@ max_concurrent = 5
     const cfg = ResidentConfigSchema.parse(parseToml(toml));
     expect(cfg.mention.allowed_users).toEqual(["U_ALICE", "U_BOB"]);
     expect(cfg.mention.max_concurrent).toBe(5);
+  });
+
+  test("rejects duplicate mcp_servers entries", () => {
+    expect(() =>
+      ResidentConfigSchema.parse({
+        mcp_servers: [
+          { name: "fs", command: "a" },
+          { name: "fs", command: "b" },
+        ],
+      }),
+    ).toThrow(/duplicate mcp_servers entry: fs/);
   });
 
   test("rejects non-positive max_concurrent", () => {
@@ -94,8 +105,8 @@ max_concurrent = 5
       app_ids: ["A1"],
       prompt: "p.md",
     });
-    expect(cfg.mcp_servers).toHaveLength(1);
-    expect(cfg.mcp_servers[0]?.env).toEqual({ K: "v" });
+    expect(Object.keys(cfg.mcp_servers)).toEqual(["fs"]);
+    expect(cfg.mcp_servers.fs?.env).toEqual({ K: "v" });
   });
 
   test("rejects an alert trigger with empty channels or app_ids", () => {
