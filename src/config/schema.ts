@@ -16,24 +16,28 @@ const DANGEROUS_ENV_KEYS = new Set([
   "PATH",
 ]);
 
-const McpStdioServerSchema = z.object({
-  name: z.string().min(1),
-  command: z.string().min(1),
-  args: z.array(z.string()).default([]),
-  env: z
-    .record(z.string(), z.string())
-    .optional()
-    .refine(
-      (env) => !env || !Object.keys(env).some((k) => DANGEROUS_ENV_KEYS.has(k.toUpperCase())),
-      "env may not contain runtime/loader variables (LD_PRELOAD, NODE_OPTIONS, PATH, etc.)",
-    ),
-});
+const McpStdioServerSchema = z
+  .object({
+    name: z.string().min(1),
+    command: z.string().min(1),
+    args: z.array(z.string()).default([]),
+    env: z
+      .record(z.string(), z.string())
+      .optional()
+      .refine(
+        (env) => !env || !Object.keys(env).some((k) => DANGEROUS_ENV_KEYS.has(k.toUpperCase())),
+        "env may not contain runtime/loader variables (LD_PRELOAD, NODE_OPTIONS, PATH, etc.)",
+      ),
+  })
+  .strict();
 
-const AlertTriggerSchema = z.object({
-  channels: z.array(z.string().min(1)).min(1),
-  app_ids: z.array(z.string().min(1)).min(1),
-  prompt: z.string().optional(),
-});
+const AlertTriggerSchema = z
+  .object({
+    channels: z.array(z.string().min(1)).min(1),
+    app_ids: z.array(z.string().min(1)).min(1),
+    prompt: z.string().optional(),
+  })
+  .strict();
 
 const MentionSchema = z
   .object({
@@ -41,17 +45,21 @@ const MentionSchema = z
     max_concurrent: z.number().int().positive().default(10),
     prompt: z.string().default(""),
   })
+  .strict()
   .prefault({});
 
 const ShutdownSchema = z
   .object({
     drain_timeout_ms: z.number().int().nonnegative().default(60_000),
   })
+  .strict()
   .prefault({});
 
-const RunnerWorkspaceSchema = z.object({
-  path: z.string().min(1),
-});
+const RunnerWorkspaceSchema = z
+  .object({
+    path: z.string().min(1),
+  })
+  .strict();
 
 const RunnerSchema = z
   .object({
@@ -59,12 +67,14 @@ const RunnerSchema = z
     system_prompt: z.string().default(""),
     workspace: RunnerWorkspaceSchema.optional(),
   })
+  .strict()
   .prefault({});
 
 const TriggersSchema = z
   .object({
     alerts: z.array(AlertTriggerSchema).default([]),
   })
+  .strict()
   .prefault({});
 
 export const ResidentConfigSchema = z
@@ -75,6 +85,7 @@ export const ResidentConfigSchema = z
     triggers: TriggersSchema,
     mcp_servers: z.array(McpStdioServerSchema).default([]),
   })
+  .strict()
   .prefault({});
 
 export type ResidentConfig = z.infer<typeof ResidentConfigSchema>;
