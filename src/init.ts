@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -40,16 +39,15 @@ drain_timeout_ms = 60000
 
 const path = process.argv[2] ?? DEFAULT_PATH;
 
-if (existsSync(path)) {
-  console.error(`error: ${path} already exists; remove it first to regenerate`);
-  process.exit(1);
-}
-
 try {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, SKELETON, { mode: 0o600 });
+  await writeFile(path, SKELETON, { flag: "wx", mode: 0o600 });
   console.log(`resident: wrote skeleton config to ${path}`);
 } catch (error) {
+  if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+    console.error(`error: ${path} already exists; remove it first to regenerate`);
+    process.exit(1);
+  }
   console.error(
     `error: failed to write config to ${path}:`,
     error instanceof Error ? error.message : String(error),
