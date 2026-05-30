@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve as resolvePath } from "node:path";
+import { parseArgs } from "node:util";
 
 const DEFAULT_PATH = join(homedir(), ".resident", "config.toml");
 
@@ -37,15 +38,34 @@ drain_timeout_ms = 60000
 # env = { DD_API_KEY = "\${DD_API_KEY}" }
 `;
 
-const path = process.argv[2] ?? DEFAULT_PATH;
+const USAGE = "usage: resident init [-c|--config <path>] [-f|--force]";
+
+const { values } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    config: { type: "string", short: "c" },
+    force: { type: "boolean", short: "f" },
+    help: { type: "boolean", short: "h" },
+  },
+  allowPositionals: false,
+});
+
+if (values.help) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
+const path = resolvePath(values.config ?? DEFAULT_PATH);
 
 try {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-  await writeFile(path, SKELETON, { flag: "wx", mode: 0o600 });
+  await writeFile(path, SKELETON, { flag: values.force ? "w" : "wx", mode: 0o600 });
   console.log(`resident: wrote skeleton config to ${path}`);
 } catch (error) {
   if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-    console.error(`error: ${path} already exists; remove it first to regenerate`);
+    console.error(
+      `error: ${path} already exists; pass --force to overwrite or remove it first`,
+    );
     process.exit(1);
   }
   console.error(
