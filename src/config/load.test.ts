@@ -1,9 +1,11 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: tests assert ${VAR} interpolation in plain strings
 
-import { describe, expect, test } from "bun:test";
-import { resolve as resolvePath } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join, resolve as resolvePath } from "node:path";
 import { parse as parseToml } from "smol-toml";
-import { interpolateEnv } from "./load";
+import { interpolateEnv, loadConfig } from "./load";
 import { ResidentConfigSchema } from "./schema";
 
 describe("interpolateEnv", () => {
@@ -154,5 +156,58 @@ max_concurrent = 5
         triggers: { alerts: [{ channels: ["C1"], app_ids: [] }] },
       }),
     ).toThrow();
+  });
+});
+
+describe("loadConfig", () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await mkdtemp(join(tmpdir(), "resident-test-"));
+  });
+
+  afterEach(async () => {
+    await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  test("reads, parses, interpolates, and validates a TOML file", async () => {
+    const path = join(tmpDir, "config.toml");
+    await writeFile(
+      path,
+      `[mention]
+max_concurrent = 5
+
+[[mcp_servers]]
+name = "fs"
+command = "\${HOME_FOR_TEST}"
+`,
+    );
+    const cfg = await loadConfig(path, { HOME_FOR_TEST: "/tmp/x" });
+    expect(cfg.mention.max_concurrent).toBe(5);
+    expect(cfg.mcp_servers.fs?.command).toBe("/tmp/x");
+  });
+
+  test("wraps ENOENT with path context", async () => {
+    await expect(loadConfig(join(tmpDir, "no-such.toml"), {})).rejects.toThrow(
+      /failed to read config/,
+    );
+  });
+
+  test("wraps TOML parse errors with path context", async () => {
+    const path = join(tmpDir, "config.toml");
+    await writeFile(path, "[unclosed section\nkey = ");
+    await expect(loadConfig(path, {})).rejects.toThrow(/failed to parse TOML/);
+  });
+
+  test("wraps undefined env var errors", async () => {
+    const path = join(tmpDir, "config.toml");
+    await writeFile(path, `[runner]\nmodel = "\${MISSING_VAR_FOR_TEST}"\n`);
+    await expect(loadConfig(path, {})).rejects.toThrow(/undefined env vars: MISSING_VAR_FOR_TEST/);
+  });
+
+  test("wraps schema validation errors with path context", async () => {
+    const path = join(tmpDir, "config.toml");
+    await writeFile(path, "[mention]\nmax_concurrent = -1\n");
+    await expect(loadConfig(path, {})).rejects.toThrow(/did not match schema/);
   });
 });
