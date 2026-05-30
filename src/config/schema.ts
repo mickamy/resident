@@ -1,3 +1,5 @@
+import { statSync } from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
 
 // Variables that change how a process loads code or resolves binaries.
@@ -90,7 +92,16 @@ const RunnerWorkspaceSchema = z
   .object({
     path: z.string().min(1),
   })
-  .strict();
+  .strict()
+  .transform((v) => ({ path: resolvePath(v.path) }))
+  .superRefine((v, ctx) => {
+    if (!statSync(v.path, { throwIfNoEntry: false })?.isDirectory()) {
+      ctx.addIssue({
+        code: "custom",
+        message: `runner.workspace.path "${v.path}" is not an existing directory`,
+      });
+    }
+  });
 
 const RunnerSchema = z
   .object({

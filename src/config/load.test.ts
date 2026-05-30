@@ -1,5 +1,7 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: tests assert ${VAR} interpolation in plain strings
+
 import { describe, expect, test } from "bun:test";
+import { resolve as resolvePath } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { interpolateEnv } from "./load";
 import { ResidentConfigSchema } from "./schema";
@@ -73,6 +75,14 @@ max_concurrent = 5
     const cfg = ResidentConfigSchema.parse(parseToml(toml));
     expect(cfg.mention.allowed_users).toEqual(["U_ALICE", "U_BOB"]);
     expect(cfg.mention.max_concurrent).toBe(5);
+  });
+
+  test("resolves and validates runner.workspace.path", () => {
+    expect(() =>
+      ResidentConfigSchema.parse({ runner: { workspace: { path: "/no/such/dir/exists/here" } } }),
+    ).toThrow(/not an existing directory/);
+    const cfg = ResidentConfigSchema.parse({ runner: { workspace: { path: "." } } });
+    expect(cfg.runner.workspace?.path).toBe(resolvePath("."));
   });
 
   test("rejects empty allowed_users (use null for allow-all)", () => {
