@@ -75,6 +75,12 @@ max_concurrent = 5
     expect(cfg.mention.max_concurrent).toBe(5);
   });
 
+  test("rejects empty allowed_users (use null for allow-all)", () => {
+    expect(() => ResidentConfigSchema.parse({ mention: { allowed_users: [] } })).toThrow(
+      /allowed_users cannot be empty/,
+    );
+  });
+
   test("rejects duplicate mcp_servers entries", () => {
     expect(() =>
       ResidentConfigSchema.parse({

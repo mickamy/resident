@@ -65,7 +65,14 @@ const AlertTriggerSchema = z
 
 const MentionSchema = z
   .object({
-    allowed_users: z.array(z.string().min(1)).nullable().default(null),
+    allowed_users: z
+      .array(z.string().min(1))
+      .nullable()
+      .default(null)
+      .refine(
+        (v) => v === null || v.length > 0,
+        "allowed_users cannot be empty; use null to allow every channel member",
+      ),
     max_concurrent: z.number().int().positive().default(10),
     prompt: z.string().default(""),
   })
