@@ -63,9 +63,7 @@ try {
   console.log(`resident: wrote skeleton config to ${path}`);
 } catch (error) {
   if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-    console.error(
-      `error: ${path} already exists; pass --force to overwrite or remove it first`,
-    );
+    console.error(`error: ${path} already exists; pass --force to overwrite or remove it first`);
     process.exit(1);
   }
   console.error(
