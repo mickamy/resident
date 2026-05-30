@@ -1,10 +1,32 @@
 import { z } from "zod";
 
+// Variables that change how a process loads code or resolves binaries.
+// Letting a config file inject these into spawned subprocesses is effectively code execution.
+const DANGEROUS_ENV_KEYS = new Set([
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+  "LD_AUDIT",
+  "DYLD_INSERT_LIBRARIES",
+  "DYLD_LIBRARY_PATH",
+  "DYLD_FALLBACK_LIBRARY_PATH",
+  "NODE_OPTIONS",
+  "BUN_INSPECT",
+  "BUN_INSPECT_NOTIFY",
+  "BUN_INSPECT_CONNECT_TO",
+  "PATH",
+]);
+
 const McpStdioServerSchema = z.object({
   name: z.string().min(1),
   command: z.string().min(1),
   args: z.array(z.string()).default([]),
-  env: z.record(z.string(), z.string()).optional(),
+  env: z
+    .record(z.string(), z.string())
+    .optional()
+    .refine(
+      (env) => !env || !Object.keys(env).some((k) => DANGEROUS_ENV_KEYS.has(k.toUpperCase())),
+      "env may not contain runtime/loader variables (LD_PRELOAD, NODE_OPTIONS, PATH, etc.)",
+    ),
 });
 
 const AlertTriggerSchema = z.object({
