@@ -23,9 +23,7 @@ describe("interpolateEnv", () => {
   });
 
   test("reports every undefined env var in a single error", () => {
-    expect(() => interpolateEnv({ a: "${A}", b: "${B}" }, {})).toThrow(
-      /undefined env vars: A, B/,
-    );
+    expect(() => interpolateEnv({ a: "${A}", b: "${B}" }, {})).toThrow(/undefined env vars: A, B/);
   });
 
   test("does not touch strings without ${VAR}", () => {
