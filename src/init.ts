@@ -3,7 +3,8 @@ import { homedir } from "node:os";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { parseArgs } from "node:util";
 
-const DEFAULT_PATH = join(homedir(), ".resident", "config.toml");
+const home = homedir();
+const DEFAULT_PATH = home ? join(home, ".resident", "config.toml") : null;
 
 const SKELETON = `# resident configuration
 # https://github.com/mickamy/resident
@@ -55,7 +56,12 @@ if (values.help) {
   process.exit(0);
 }
 
-const path = resolvePath(values.config ?? DEFAULT_PATH);
+const configPath = values.config ?? DEFAULT_PATH;
+if (!configPath) {
+  console.error("error: $HOME is not set; pass --config <path> to choose a target");
+  process.exit(1);
+}
+const path = resolvePath(configPath);
 
 try {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
