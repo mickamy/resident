@@ -91,6 +91,19 @@ max_concurrent = 5
     );
   });
 
+  test("rejects duplicate triggers.alerts entries", () => {
+    expect(() =>
+      ResidentConfigSchema.parse({
+        triggers: {
+          alerts: [
+            { channels: ["C1"], app_ids: ["A1"] },
+            { channels: ["C1"], app_ids: ["A1"] },
+          ],
+        },
+      }),
+    ).toThrow(/duplicate triggers.alerts entry/);
+  });
+
   test("rejects duplicate mcp_servers entries", () => {
     expect(() =>
       ResidentConfigSchema.parse({

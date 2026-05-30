@@ -65,6 +65,24 @@ const AlertTriggerSchema = z
   })
   .strict();
 
+const AlertTriggersSchema = z
+  .array(AlertTriggerSchema)
+  .default([])
+  .superRefine((arr, ctx) => {
+    const seen = new Set<string>();
+    for (const [i, entry] of arr.entries()) {
+      const key = `${[...entry.channels].sort().join(",")}|${[...entry.app_ids].sort().join(",")}`;
+      if (seen.has(key)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `duplicate triggers.alerts entry for channels=[${entry.channels.join(",")}] app_ids=[${entry.app_ids.join(",")}]`,
+          path: [i],
+        });
+      }
+      seen.add(key);
+    }
+  });
+
 const MentionSchema = z
   .object({
     allowed_users: z
@@ -114,7 +132,7 @@ const RunnerSchema = z
 
 const TriggersSchema = z
   .object({
-    alerts: z.array(AlertTriggerSchema).default([]),
+    alerts: AlertTriggersSchema,
   })
   .strict()
   .prefault({});
