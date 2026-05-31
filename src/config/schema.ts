@@ -93,12 +93,12 @@ const MentionSchema = z
     allowed_users: z
       .array(z.string().min(1))
       .nullable()
-      .default(null)
+      .optional()
       .refine(
-        (v) => v === null || v.length > 0,
+        (v) => v === undefined || v === null || v.length > 0,
         "allowed_users cannot be empty; use null to allow every channel member",
       ),
-    max_concurrent: z.number().int().positive().default(DEFAULTS.mention.max_concurrent),
+    max_concurrent: z.number().int().positive().optional(),
     prompt: z.string().default(""),
   })
   .strict()
@@ -106,7 +106,7 @@ const MentionSchema = z
 
 const ShutdownSchema = z
   .object({
-    drain_timeout_ms: z.number().int().nonnegative().default(DEFAULTS.shutdown.drain_timeout_ms),
+    drain_timeout_ms: z.number().int().nonnegative().optional(),
   })
   .strict()
   .prefault({});

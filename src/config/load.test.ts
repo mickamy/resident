@@ -63,11 +63,12 @@ describe("interpolateEnv", () => {
 });
 
 describe("ResidentConfigSchema", () => {
-  test("accepts an empty config with defaults", () => {
+  test("leaves env-overridable fields undefined when omitted", () => {
+    // Fields the daemon can fall back to env vars for must not be filled in by the schema.
     const cfg = ResidentConfigSchema.parse({});
-    expect(cfg.mention.max_concurrent).toBe(10);
-    expect(cfg.mention.allowed_users).toBeNull();
-    expect(cfg.shutdown.drain_timeout_ms).toBe(60_000);
+    expect(cfg.mention.allowed_users).toBeUndefined();
+    expect(cfg.mention.max_concurrent).toBeUndefined();
+    expect(cfg.shutdown.drain_timeout_ms).toBeUndefined();
     expect(cfg.runner.system_prompt).toBeUndefined();
     expect(cfg.triggers.alerts).toEqual([]);
     expect(cfg.mcp_servers).toEqual({});

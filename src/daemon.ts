@@ -36,7 +36,7 @@ if (!Number.isInteger(envTimeout) || envTimeout < 0) {
   );
   process.exit(1);
 }
-const SHUTDOWN_DRAIN_TIMEOUT_MS = cfg ? cfg.shutdown.drain_timeout_ms : envTimeout;
+const SHUTDOWN_DRAIN_TIMEOUT_MS = cfg?.shutdown.drain_timeout_ms ?? envTimeout;
 
 const shutdownAbortController = new AbortController();
 
@@ -48,7 +48,7 @@ if (!Number.isInteger(envMaxConcurrent) || envMaxConcurrent < 1) {
   );
   process.exit(1);
 }
-const maxConcurrentMentions = cfg ? cfg.mention.max_concurrent : envMaxConcurrent;
+const maxConcurrentMentions = cfg?.mention.max_concurrent ?? envMaxConcurrent;
 
 const envRawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
 const envAllowedUsers = envRawAllowed
@@ -59,11 +59,13 @@ const envAllowedUsers = envRawAllowed
         .filter(Boolean),
     )
   : null;
-const allowedUsers = cfg
-  ? cfg.mention.allowed_users === null
-    ? null
-    : new Set(cfg.mention.allowed_users)
-  : envAllowedUsers;
+const cfgAllowedUsers = cfg?.mention.allowed_users;
+const allowedUsers =
+  cfgAllowedUsers === undefined
+    ? envAllowedUsers
+    : cfgAllowedUsers === null
+      ? null
+      : new Set(cfgAllowedUsers);
 
 if (allowedUsers === null) {
   console.warn(
