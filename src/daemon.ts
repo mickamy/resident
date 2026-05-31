@@ -9,13 +9,13 @@ import { createApp } from "./slack/app";
 // Log and exit on any unhandled top-level failure so the process supervisor (systemd,
 // Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
 // process limping on with an unrecoverable error.
-process.on("uncaughtException", (error) => {
+process.once("uncaughtException", (error) => {
   // Pass through to console.error so Error stack traces and plain objects both keep
   // their full structure instead of being collapsed to "[object Object]".
   console.error("resident: uncaughtException:", error);
   process.exit(1);
 });
-process.on("unhandledRejection", (reason) => {
+process.once("unhandledRejection", (reason) => {
   console.error("resident: unhandledRejection:", reason);
   process.exit(1);
 });
