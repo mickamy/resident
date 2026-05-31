@@ -1,3 +1,4 @@
+import "./bootstrap";
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -5,17 +6,6 @@ import type { RunOptions } from "./agent/runner";
 import { loadConfig } from "./config/load";
 import type { ResidentConfig } from "./config/schema";
 import { createApp } from "./slack/app";
-
-// Log and exit on any unhandled top-level failure so the process supervisor sees a
-// non-zero exit. Log the stack only (not the whole reason object) — SDK errors can
-// carry Authorization headers and other secrets in nested properties.
-const handleFatal = (label: string, error: unknown) => {
-  const formatted = error instanceof Error ? (error.stack ?? error.message) : String(error);
-  console.error(`resident: ${label}:`, formatted);
-  process.exit(1);
-};
-process.on("uncaughtException", (error) => handleFatal("uncaughtException", error));
-process.on("unhandledRejection", (reason) => handleFatal("unhandledRejection", reason));
 
 const botToken = process.env.SLACK_BOT_TOKEN;
 const appToken = process.env.SLACK_APP_TOKEN;
