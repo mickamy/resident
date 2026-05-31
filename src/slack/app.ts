@@ -114,7 +114,7 @@ export async function createApp({
 
       const p = handleAlert({
         event: {
-          text: typeof ev.text === "string" ? ev.text : "",
+          text: getAlertText(ev),
           ts: typeof ev.ts === "string" ? ev.ts : "",
           thread_ts: typeof ev.thread_ts === "string" ? ev.thread_ts : undefined,
           channel: channel ?? "",
@@ -239,6 +239,32 @@ export type HandleAlertDeps = {
   defaultSystemPrompt: string;
   run: (prompt: string, options?: { systemPrompt?: string }) => Promise<string>;
 };
+
+/**
+ * Pull the alert body out of a Slack `message` event. Datadog / AWS Chatbot / Grafana et al.
+ * often put the real content into `attachments[*].{pretext,title,text,fallback}` while the
+ * top-level `text` is empty or a fallback string, so concatenate whatever string fields we
+ * find rather than relying on `text` alone.
+ */
+export function getAlertText(ev: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const pushIfString = (v: unknown) => {
+    if (typeof v === "string" && v.trim()) parts.push(v.trim());
+  };
+  pushIfString(ev.text);
+  if (Array.isArray(ev.attachments)) {
+    for (const att of ev.attachments) {
+      if (att && typeof att === "object") {
+        const a = att as Record<string, unknown>;
+        pushIfString(a.pretext);
+        pushIfString(a.title);
+        pushIfString(a.text);
+        pushIfString(a.fallback);
+      }
+    }
+  }
+  return parts.join("\n").trim();
+}
 
 export function findAlertTrigger(
   event: { channel?: string; app_id?: string },

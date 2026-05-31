@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { SayArguments, SayFn } from "@slack/bolt/dist/types/utilities";
 import type { AppMentionEvent } from "@slack/types";
 import type { AlertTrigger } from "../config/schema";
-import { findAlertTrigger, handleAlert, handleMention, stripBotMention } from "./app";
+import { findAlertTrigger, getAlertText, handleAlert, handleMention, stripBotMention } from "./app";
 
 describe("stripBotMention", () => {
   test("removes only the bot's own mention", () => {
@@ -164,6 +164,57 @@ const TRIGGERS: AlertTrigger[] = [
   { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
   { channels: ["C_INC"], app_ids: ["A_AWS"], prompt: "Be brief." },
 ];
+
+describe("getAlertText", () => {
+  test("returns top-level text when present", () => {
+    expect(getAlertText({ text: "[CRIT] CPU 99%" })).toBe("[CRIT] CPU 99%");
+  });
+
+  test("aggregates attachment pretext/title/text/fallback under top-level text", () => {
+    const out = getAlertText({
+      text: "alert summary",
+      attachments: [
+        {
+          pretext: "Datadog Alert",
+          title: "Triggered: HighCPU",
+          text: "host=web-01 cpu=99",
+          fallback: "fallback line",
+        },
+      ],
+    });
+    expect(out).toBe(
+      [
+        "alert summary",
+        "Datadog Alert",
+        "Triggered: HighCPU",
+        "host=web-01 cpu=99",
+        "fallback line",
+      ].join("\n"),
+    );
+  });
+
+  test("returns attachment fields when top-level text is empty", () => {
+    expect(
+      getAlertText({
+        text: "",
+        attachments: [{ title: "Triggered: HighCPU", text: "host=web-01" }],
+      }),
+    ).toBe("Triggered: HighCPU\nhost=web-01");
+  });
+
+  test("skips non-string and blank attachment fields", () => {
+    expect(
+      getAlertText({
+        attachments: [{ title: "", text: "real body", pretext: undefined, fallback: 42 }],
+      }),
+    ).toBe("real body");
+  });
+
+  test("returns empty string when nothing usable is present", () => {
+    expect(getAlertText({})).toBe("");
+    expect(getAlertText({ text: "   ", attachments: [] })).toBe("");
+  });
+});
 
 describe("findAlertTrigger", () => {
   test("matches channel + app_id pair", () => {
