@@ -42,15 +42,22 @@ drain_timeout_ms = ${DEFAULTS.shutdown.drain_timeout_ms}
 
 const USAGE = "usage: resident init [-c|--config <path>] [-f|--force]";
 
-const { values } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    config: { type: "string", short: "c" },
-    force: { type: "boolean", short: "f" },
-    help: { type: "boolean", short: "h" },
-  },
-  allowPositionals: false,
-});
+let values: { config?: string; force?: boolean; help?: boolean };
+try {
+  ({ values } = parseArgs({
+    args: process.argv.slice(2),
+    options: {
+      config: { type: "string", short: "c" },
+      force: { type: "boolean", short: "f" },
+      help: { type: "boolean", short: "h" },
+    },
+    allowPositionals: false,
+  }));
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  console.error(USAGE);
+  process.exit(1);
+}
 
 if (values.help) {
   console.log(USAGE);
