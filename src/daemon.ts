@@ -14,11 +14,12 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
-const CONFIG_PATH =
-  process.env.RESIDENT_CONFIG ?? join(homedir() || ".", ".resident", "config.toml");
+const customConfigPath = process.env.RESIDENT_CONFIG;
+const CONFIG_PATH = customConfigPath ?? join(homedir() || ".", ".resident", "config.toml");
 
+// Explicit RESIDENT_CONFIG must load (no silent fallback); the default path is optional.
 let cfg: ResidentConfig | null = null;
-if (existsSync(CONFIG_PATH)) {
+if (customConfigPath || existsSync(CONFIG_PATH)) {
   try {
     cfg = await loadConfig(CONFIG_PATH);
     console.log(`resident: loaded config from ${CONFIG_PATH}`);
