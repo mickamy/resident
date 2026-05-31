@@ -9,15 +9,20 @@ import { createApp } from "./slack/app";
 // Log and exit on any unhandled top-level failure so the process supervisor (systemd,
 // Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
 // process limping on with an unrecoverable error.
+// Defer the exit so console.error can flush to journald / piped stderr before we go down.
+// `.unref()` keeps the timer from blocking a clean exit if the loop drains earlier.
+const exitAfterFlush = () => {
+  setTimeout(() => process.exit(1), 500).unref();
+};
 process.once("uncaughtException", (error) => {
   // Pass through to console.error so Error stack traces and plain objects both keep
   // their full structure instead of being collapsed to "[object Object]".
   console.error("resident: uncaughtException:", error);
-  process.exit(1);
+  exitAfterFlush();
 });
 process.once("unhandledRejection", (reason) => {
   console.error("resident: unhandledRejection:", reason);
-  process.exit(1);
+  exitAfterFlush();
 });
 
 const botToken = process.env.SLACK_BOT_TOKEN;
