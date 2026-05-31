@@ -6,26 +6,16 @@ import { loadConfig } from "./config/load";
 import type { ResidentConfig } from "./config/schema";
 import { createApp } from "./slack/app";
 
-// Log and exit on any unhandled top-level failure so the process supervisor (systemd,
-// Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
-// process limping on with an unrecoverable error.
-// Defer the exit so console.error can flush to journald / piped stderr before we go down.
-// Keep the timer ref'd: with the handlers above, Node won't auto-crash, and an .unref()'d
-// timer could let the event loop drain to a clean exit-code 0 — masking the failure from
-// the supervisor.
-const exitAfterFlush = () => {
-  setTimeout(() => process.exit(1), 500);
+// Log and exit on any unhandled top-level failure so the process supervisor sees a
+// non-zero exit. Log the stack only (not the whole reason object) — SDK errors can
+// carry Authorization headers and other secrets in nested properties.
+const handleFatal = (label: string, error: unknown) => {
+  const formatted = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  console.error(`resident: ${label}:`, formatted);
+  process.exit(1);
 };
-process.once("uncaughtException", (error) => {
-  // Pass through to console.error so Error stack traces and plain objects both keep
-  // their full structure instead of being collapsed to "[object Object]".
-  console.error("resident: uncaughtException:", error);
-  exitAfterFlush();
-});
-process.once("unhandledRejection", (reason) => {
-  console.error("resident: unhandledRejection:", reason);
-  exitAfterFlush();
-});
+process.on("uncaughtException", (error) => handleFatal("uncaughtException", error));
+process.on("unhandledRejection", (reason) => handleFatal("unhandledRejection", reason));
 
 const botToken = process.env.SLACK_BOT_TOKEN;
 const appToken = process.env.SLACK_APP_TOKEN;
