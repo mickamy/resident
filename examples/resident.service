@@ -29,7 +29,7 @@ Group=resident
 # Once `bun build --compile` produces a single-binary release, switch ExecStart to the
 # installed binary path (e.g. /usr/local/bin/resident-daemon) and drop WorkingDirectory.
 WorkingDirectory=/opt/resident
-ExecStart=/usr/local/bin/bun src/daemon.ts
+ExecStart=/usr/bin/env bun src/daemon.ts
 
 # Restart policy: stay up across crashes, with a small backoff to avoid tight loops.
 Restart=always
