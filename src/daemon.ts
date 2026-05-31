@@ -10,9 +10,11 @@ import { createApp } from "./slack/app";
 // Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
 // process limping on with an unrecoverable error.
 // Defer the exit so console.error can flush to journald / piped stderr before we go down.
-// `.unref()` keeps the timer from blocking a clean exit if the loop drains earlier.
+// Keep the timer ref'd: with the handlers above, Node won't auto-crash, and an .unref()'d
+// timer could let the event loop drain to a clean exit-code 0 — masking the failure from
+// the supervisor.
 const exitAfterFlush = () => {
-  setTimeout(() => process.exit(1), 500).unref();
+  setTimeout(() => process.exit(1), 500);
 };
 process.once("uncaughtException", (error) => {
   // Pass through to console.error so Error stack traces and plain objects both keep
