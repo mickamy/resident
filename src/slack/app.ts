@@ -98,6 +98,11 @@ export async function createApp({
       // Skip thread replies; alert sources often post follow-up updates in the same thread.
       if (typeof ev.thread_ts === "string" && ev.thread_ts !== ev.ts) return;
 
+      // Extract the alert body up-front so we skip everything else (dedup, trigger lookup,
+      // concurrency check) when the event has no usable text — common for non-alert bot posts.
+      const text = getAlertText(ev);
+      if (!text) return;
+
       if (isDuplicateEvent(body.event_id, seenEventIds, DEDUP_TTL_MS)) return;
 
       const channel = typeof ev.channel === "string" ? ev.channel : undefined;
@@ -122,7 +127,7 @@ export async function createApp({
 
       const p = handleAlert({
         event: {
-          text: getAlertText(ev),
+          text,
           ts: typeof ev.ts === "string" ? ev.ts : "",
           thread_ts: typeof ev.thread_ts === "string" ? ev.thread_ts : undefined,
           channel: channel ?? "",
