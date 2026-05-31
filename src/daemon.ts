@@ -1,3 +1,4 @@
+import "./bootstrap";
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";

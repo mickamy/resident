@@ -30,6 +30,15 @@ Useful scripts:
 | `bun run lint`      | Biome lint + format check                   |
 | `bun run build`     | local single-binary build (`dist/resident`) |
 
+## Operation
+
+The daemon (`bun run daemon` / `src/daemon.ts`) is meant to run under a process supervisor — systemd, Docker `restart: always`, or equivalent.
+
+- **Slack connectivity is self-healing.** `@slack/bolt` Socket Mode keeps a long-lived WebSocket to Slack with ping/pong heartbeats and reconnects automatically across short outages and Slack-side server rotations. Application code does not need to manage reconnection.
+- **The process is not self-healing.** Any uncaught error (`uncaughtException` / `unhandledRejection`) is logged (stack when available) and the daemon exits with code `1`. The supervisor must restart it.
+
+A reference systemd unit lives at [`examples/resident.service`](examples/resident.service). It sets `Restart=always`, journald logging, and uses an `EnvironmentFile` for secrets (`SLACK_BOT_TOKEN`, `SLACK_APP_TOKEN`, `ANTHROPIC_API_KEY`).
+
 ## License
 
 [MIT](LICENSE)
