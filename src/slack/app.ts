@@ -97,6 +97,9 @@ export async function createApp({
       if (!isBotPost) return;
       // Skip thread replies; alert sources often post follow-up updates in the same thread.
       if (typeof ev.thread_ts === "string" && ev.thread_ts !== ev.ts) return;
+      // Reject every subtype except 'bot_message' so edits / deletes (message_changed,
+      // message_deleted, …) don't re-trigger a triage run on the same alert.
+      if (typeof ev.subtype === "string" && ev.subtype !== "bot_message") return;
 
       // Extract the alert body up-front so we skip everything else (dedup, trigger lookup,
       // concurrency check) when the event has no usable text — common for non-alert bot posts.
