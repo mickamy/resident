@@ -103,7 +103,15 @@ export async function createApp({
       const channel = typeof ev.channel === "string" ? ev.channel : undefined;
       const appId = typeof ev.app_id === "string" ? ev.app_id : undefined;
       const trigger = findAlertTrigger({ channel, app_id: appId }, alertTriggers);
-      if (!trigger) return;
+      if (!trigger) {
+        // Help operators discover the correct app_id when an alert lands in a watched channel.
+        if (channel && alertTriggers.some((t) => t.channels.includes(channel))) {
+          console.info(
+            `resident: alert in monitored channel ${channel} ignored — app_id "${appId ?? "unknown"}" did not match any configured trigger`,
+          );
+        }
+        return;
+      }
 
       if (activePromises.size >= maxConcurrentMentions) {
         console.warn(
