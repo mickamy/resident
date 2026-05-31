@@ -1,5 +1,4 @@
-import { statSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { type ResidentConfig, ResidentConfigSchema } from "./schema";
@@ -85,8 +84,8 @@ export async function loadConfig(
     const raw = cfg.runner.workspace.path;
     const absolute = isAbsolute(raw) ? raw : resolve(dirname(path), raw);
     try {
-      const stat = statSync(absolute, { throwIfNoEntry: false });
-      if (!stat?.isDirectory()) {
+      const statResult = await stat(absolute, { throwIfNoEntry: false });
+      if (!statResult?.isDirectory()) {
         throw new Error(
           `runner.workspace.path "${raw}" (resolved to "${absolute}") is not an existing directory`,
         );
