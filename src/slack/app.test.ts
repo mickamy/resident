@@ -1,7 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { SayArguments, SayFn } from "@slack/bolt/dist/types/utilities";
 import type { AppMentionEvent } from "@slack/types";
-import { handleMention, stripBotMention } from "./app";
+import type { AlertTrigger } from "../config/schema";
+import { findAlertTrigger, getAlertText, handleAlert, handleMention, stripBotMention } from "./app";
 
 describe("stripBotMention", () => {
   test("removes only the bot's own mention", () => {
@@ -155,6 +156,209 @@ describe("handleMention", () => {
       console.error = originalError;
     }
     expect(sayCount).toBe(1);
+    expect(errorCalls.length).toBeGreaterThan(0);
+  });
+});
+
+const TRIGGERS: AlertTrigger[] = [
+  { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
+  { channels: ["C_INC"], app_ids: ["A_AWS"], prompt: "Be brief." },
+];
+
+describe("getAlertText", () => {
+  test("returns top-level text when present", () => {
+    expect(getAlertText({ text: "[CRIT] CPU 99%" })).toBe("[CRIT] CPU 99%");
+  });
+
+  test("aggregates attachment pretext/title/text/fallback under top-level text", () => {
+    const out = getAlertText({
+      text: "alert summary",
+      attachments: [
+        {
+          pretext: "Datadog Alert",
+          title: "Triggered: HighCPU",
+          text: "host=web-01 cpu=99",
+          fallback: "fallback line",
+        },
+      ],
+    });
+    expect(out).toBe(
+      [
+        "alert summary",
+        "Datadog Alert",
+        "Triggered: HighCPU",
+        "host=web-01 cpu=99",
+        "fallback line",
+      ].join("\n"),
+    );
+  });
+
+  test("returns attachment fields when top-level text is empty", () => {
+    expect(
+      getAlertText({
+        text: "",
+        attachments: [{ title: "Triggered: HighCPU", text: "host=web-01" }],
+      }),
+    ).toBe("Triggered: HighCPU\nhost=web-01");
+  });
+
+  test("includes attachment fields[*].title and fields[*].value", () => {
+    expect(
+      getAlertText({
+        attachments: [
+          {
+            title: "Triggered",
+            fields: [
+              { title: "host", value: "web-01" },
+              { title: "metric", value: "cpu.util" },
+              { title: "threshold", value: "> 90%" },
+            ],
+          },
+        ],
+      }),
+    ).toBe("Triggered\nhost\nweb-01\nmetric\ncpu.util\nthreshold\n> 90%");
+  });
+
+  test("skips non-string and blank attachment fields", () => {
+    expect(
+      getAlertText({
+        attachments: [{ title: "", text: "real body", pretext: undefined, fallback: 42 }],
+      }),
+    ).toBe("real body");
+  });
+
+  test("collapses duplicate strings (text == fallback) without repeating them", () => {
+    const out = getAlertText({
+      text: "Triggered: HighCPU",
+      attachments: [
+        {
+          text: "Triggered: HighCPU",
+          fallback: "Triggered: HighCPU",
+          fields: [{ title: "host", value: "web-01" }],
+        },
+      ],
+    });
+    expect(out).toBe("Triggered: HighCPU\nhost\nweb-01");
+  });
+
+  test("returns empty string when nothing usable is present", () => {
+    expect(getAlertText({})).toBe("");
+    expect(getAlertText({ text: "   ", attachments: [] })).toBe("");
+  });
+});
+
+describe("findAlertTrigger", () => {
+  test("matches channel + app_id pair", () => {
+    expect(findAlertTrigger({ channel: "C_OPS", app_id: "A_DATADOG" }, TRIGGERS)).toBe(TRIGGERS[0]);
+  });
+
+  test("returns the trigger that carries the prompt override", () => {
+    expect(findAlertTrigger({ channel: "C_INC", app_id: "A_AWS" }, TRIGGERS)?.prompt).toBe(
+      "Be brief.",
+    );
+  });
+
+  test("returns undefined when channel mismatches", () => {
+    expect(findAlertTrigger({ channel: "C_OTHER", app_id: "A_DATADOG" }, TRIGGERS)).toBeUndefined();
+  });
+
+  test("returns undefined when app_id mismatches", () => {
+    expect(findAlertTrigger({ channel: "C_OPS", app_id: "A_OTHER" }, TRIGGERS)).toBeUndefined();
+  });
+
+  test("returns undefined when channel or app_id is missing", () => {
+    expect(findAlertTrigger({ app_id: "A_DATADOG" }, TRIGGERS)).toBeUndefined();
+    expect(findAlertTrigger({ channel: "C_OPS" }, TRIGGERS)).toBeUndefined();
+  });
+});
+
+const alertEvent = (overrides: Partial<{ text: string; thread_ts: string }> = {}) => ({
+  text: overrides.text ?? "[CRIT] DB CPU 99%",
+  ts: "2222.3333",
+  thread_ts: overrides.thread_ts,
+  channel: "C_OPS",
+});
+
+describe("handleAlert", () => {
+  test("posts the runner's result with trigger.prompt as systemPrompt", async () => {
+    const { sayCalls, say } = captureSays();
+    let seenSystemPrompt: string | undefined;
+    await handleAlert({
+      event: alertEvent(),
+      say,
+      trigger: { channels: ["C_OPS"], app_ids: ["A_DATADOG"], prompt: "TRIGGER_PROMPT" },
+      defaultSystemPrompt: "DEFAULT_PROMPT",
+      run: async (prompt, opts) => {
+        seenSystemPrompt = opts?.systemPrompt;
+        return `triaged: ${prompt}`;
+      },
+    });
+    expect(seenSystemPrompt).toBe("TRIGGER_PROMPT");
+    expect(sayCalls).toEqual([{ thread_ts: "2222.3333", text: "triaged: [CRIT] DB CPU 99%" }]);
+  });
+
+  test("falls back to defaultSystemPrompt when trigger.prompt is unset", async () => {
+    let seenSystemPrompt: string | undefined;
+    await handleAlert({
+      event: alertEvent(),
+      say: captureSays().say,
+      trigger: { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
+      defaultSystemPrompt: "DEFAULT_PROMPT",
+      run: async (_p, opts) => {
+        seenSystemPrompt = opts?.systemPrompt;
+        return "ok";
+      },
+    });
+    expect(seenSystemPrompt).toBe("DEFAULT_PROMPT");
+  });
+
+  test("uses event.thread_ts when present", async () => {
+    const { sayCalls, say } = captureSays();
+    await handleAlert({
+      event: alertEvent({ thread_ts: "9999.0001" }),
+      say,
+      trigger: { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
+      defaultSystemPrompt: "x",
+      run: async () => "ok",
+    });
+    expect(sayCalls[0]?.thread_ts).toBe("9999.0001");
+  });
+
+  test("does not reply when the alert text is empty", async () => {
+    const { sayCalls, say } = captureSays();
+    await handleAlert({
+      event: alertEvent({ text: "   " }),
+      say,
+      trigger: { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
+      defaultSystemPrompt: "x",
+      run: async () => {
+        throw new Error("runner must not be called");
+      },
+    });
+    expect(sayCalls).toEqual([]);
+  });
+
+  test("logs and stays quiet when the runner throws (no channel noise)", async () => {
+    const errorCalls: unknown[][] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      errorCalls.push(args);
+    };
+    const { sayCalls, say } = captureSays();
+    try {
+      await handleAlert({
+        event: alertEvent(),
+        say,
+        trigger: { channels: ["C_OPS"], app_ids: ["A_DATADOG"] },
+        defaultSystemPrompt: "x",
+        run: async () => {
+          throw new Error("boom");
+        },
+      });
+    } finally {
+      console.error = originalError;
+    }
+    expect(sayCalls).toEqual([]);
     expect(errorCalls.length).toBeGreaterThan(0);
   });
 });
