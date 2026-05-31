@@ -21,6 +21,10 @@ const DANGEROUS_ENV_KEYS = new Set([
   "BUN_INSPECT_NOTIFY",
   "BUN_INSPECT_CONNECT_TO",
   "PATH",
+  "JAVA_TOOL_OPTIONS",
+  "PYTHONPATH",
+  "PERL5LIB",
+  "RUBYLIB",
 ]);
 
 const McpStdioServerEntrySchema = z
