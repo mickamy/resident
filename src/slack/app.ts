@@ -59,23 +59,7 @@ export async function createApp({
     if (event.subtype) {
       return;
     }
-    const eventId = body.event_id;
-    if (eventId) {
-      const now = Date.now();
-      // Map preserves insertion order, so the oldest (and thus first-to-expire) entries
-      // are at the front. Stop as soon as we hit one that hasn't expired yet.
-      for (const [id, ts] of seenEventIds) {
-        if (now - ts > DEDUP_TTL_MS) {
-          seenEventIds.delete(id);
-        } else {
-          break;
-        }
-      }
-      if (seenEventIds.has(eventId)) {
-        return;
-      }
-      seenEventIds.set(eventId, now);
-    }
+    if (isDuplicateEvent(body.event_id, seenEventIds, DEDUP_TTL_MS)) return;
     if (activePromises.size >= maxConcurrentMentions) {
       console.warn(
         `resident: dropping mention from ${event.user ?? "unknown"} (active: ${activePromises.size}, max: ${maxConcurrentMentions})`,
@@ -114,19 +98,7 @@ export async function createApp({
       // Skip thread replies; alert sources often post follow-up updates in the same thread.
       if (typeof ev.thread_ts === "string" && ev.thread_ts !== ev.ts) return;
 
-      const eventId = body.event_id;
-      if (eventId) {
-        const now = Date.now();
-        for (const [id, ts] of seenEventIds) {
-          if (now - ts > DEDUP_TTL_MS) {
-            seenEventIds.delete(id);
-          } else {
-            break;
-          }
-        }
-        if (seenEventIds.has(eventId)) return;
-        seenEventIds.set(eventId, now);
-      }
+      if (isDuplicateEvent(body.event_id, seenEventIds, DEDUP_TTL_MS)) return;
 
       const channel = typeof ev.channel === "string" ? ev.channel : undefined;
       const appId = typeof ev.app_id === "string" ? ev.app_id : undefined;
@@ -224,6 +196,27 @@ export async function handleMention({
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isDuplicateEvent(
+  eventId: string | undefined,
+  seenEventIds: Map<string, number>,
+  ttlMs: number,
+): boolean {
+  if (!eventId) return false;
+  const now = Date.now();
+  // Map preserves insertion order, so the oldest entries are at the front.
+  // Stop as soon as we hit a non-expired entry; everything after it is fresher.
+  for (const [id, ts] of seenEventIds) {
+    if (now - ts > ttlMs) {
+      seenEventIds.delete(id);
+    } else {
+      break;
+    }
+  }
+  if (seenEventIds.has(eventId)) return true;
+  seenEventIds.set(eventId, now);
+  return false;
 }
 
 export function stripBotMention(text: string, botUserId: string): string {
