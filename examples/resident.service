@@ -40,7 +40,10 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/lib/resident
+# StateDirectory (systemd 235+) creates /var/lib/resident on start with the right
+# ownership/permissions and implicitly grants the unit write access to it — no need
+# for manual `mkdir` + `chown` on the host.
+StateDirectory=resident
 
 # Logs go to journald; query with `journalctl -u resident`.
 StandardOutput=journal
