@@ -116,6 +116,7 @@ try {
     allowedUsers,
     runOptions,
     maxConcurrentMentions,
+    alertTriggers: cfg?.triggers.alerts ?? [],
   });
 
   let shuttingDown = false;
