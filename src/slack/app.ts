@@ -105,10 +105,14 @@ export async function createApp({
 
   if (alertTriggers && alertTriggers.length > 0) {
     app.event("message", async ({ event, say, body }) => {
-      // Only react to bot posts (subtype 'bot_message' or any event carrying bot_id).
       const ev = event as unknown as Record<string, unknown>;
+      // Skip the bot's own posts to avoid response loops.
+      if (ev.user === botUserId) return;
+      // Only react to bot posts (subtype 'bot_message' or any event carrying bot_id).
       const isBotPost = ev.subtype === "bot_message" || typeof ev.bot_id === "string";
       if (!isBotPost) return;
+      // Skip thread replies; alert sources often post follow-up updates in the same thread.
+      if (typeof ev.thread_ts === "string" && ev.thread_ts !== ev.ts) return;
 
       const eventId = body.event_id;
       if (eventId) {
