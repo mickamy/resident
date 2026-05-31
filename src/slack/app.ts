@@ -260,6 +260,15 @@ export function getAlertText(ev: Record<string, unknown>): string {
         pushIfString(a.title);
         pushIfString(a.text);
         pushIfString(a.fallback);
+        if (Array.isArray(a.fields)) {
+          for (const f of a.fields) {
+            if (f && typeof f === "object") {
+              const field = f as Record<string, unknown>;
+              pushIfString(field.title);
+              pushIfString(field.value);
+            }
+          }
+        }
       }
     }
   }

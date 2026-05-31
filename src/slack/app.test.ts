@@ -202,6 +202,23 @@ describe("getAlertText", () => {
     ).toBe("Triggered: HighCPU\nhost=web-01");
   });
 
+  test("includes attachment fields[*].title and fields[*].value", () => {
+    expect(
+      getAlertText({
+        attachments: [
+          {
+            title: "Triggered",
+            fields: [
+              { title: "host", value: "web-01" },
+              { title: "metric", value: "cpu.util" },
+              { title: "threshold", value: "> 90%" },
+            ],
+          },
+        ],
+      }),
+    ).toBe("Triggered\nhost\nweb-01\nmetric\ncpu.util\nthreshold\n> 90%");
+  });
+
   test("skips non-string and blank attachment fields", () => {
     expect(
       getAlertText({
