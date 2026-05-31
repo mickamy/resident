@@ -118,10 +118,21 @@ const RunnerWorkspaceSchema = z
   .strict()
   .transform((v) => ({ path: resolvePath(v.path) }))
   .superRefine((v, ctx) => {
-    if (!statSync(v.path, { throwIfNoEntry: false })?.isDirectory()) {
+    try {
+      // throwIfNoEntry:false suppresses ENOENT but other fs errors (EACCES, ELOOP, ...) still throw.
+      const stat = statSync(v.path, { throwIfNoEntry: false });
+      if (!stat?.isDirectory()) {
+        ctx.addIssue({
+          code: "custom",
+          message: `runner.workspace.path "${v.path}" is not an existing directory`,
+        });
+      }
+    } catch (error) {
       ctx.addIssue({
         code: "custom",
-        message: `runner.workspace.path "${v.path}" is not an existing directory`,
+        message: `runner.workspace.path "${v.path}" could not be accessed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
       });
     }
   });
