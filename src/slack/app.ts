@@ -315,8 +315,9 @@ export async function handleAlert({
   try {
     replyText = (await run(text, { systemPrompt })).trim() || "(no response)";
   } catch (error) {
+    // Alerts are unattended; log and stay quiet rather than spamming the channel during flaps.
     console.error("resident: runOnce failed (alert):", error);
-    replyText = "error: see logs";
+    return;
   }
 
   try {

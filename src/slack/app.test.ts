@@ -338,7 +338,7 @@ describe("handleAlert", () => {
     expect(sayCalls).toEqual([]);
   });
 
-  test("posts a generic error and logs when the runner throws", async () => {
+  test("logs and stays quiet when the runner throws (no channel noise)", async () => {
     const errorCalls: unknown[][] = [];
     const originalError = console.error;
     console.error = (...args: unknown[]) => {
@@ -358,7 +358,7 @@ describe("handleAlert", () => {
     } finally {
       console.error = originalError;
     }
-    expect(sayCalls).toEqual([{ thread_ts: "2222.3333", text: "error: see logs" }]);
+    expect(sayCalls).toEqual([]);
     expect(errorCalls.length).toBeGreaterThan(0);
   });
 });
