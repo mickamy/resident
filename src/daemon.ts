@@ -10,17 +10,13 @@ import { createApp } from "./slack/app";
 // Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
 // process limping on with an unrecoverable error.
 process.on("uncaughtException", (error) => {
-  console.error(
-    "resident: uncaughtException:",
-    error instanceof Error ? (error.stack ?? error.message) : String(error),
-  );
+  // Pass through to console.error so Error stack traces and plain objects both keep
+  // their full structure instead of being collapsed to "[object Object]".
+  console.error("resident: uncaughtException:", error);
   process.exit(1);
 });
 process.on("unhandledRejection", (reason) => {
-  console.error(
-    "resident: unhandledRejection:",
-    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
-  );
+  console.error("resident: unhandledRejection:", reason);
   process.exit(1);
 });
 
