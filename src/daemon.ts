@@ -1,6 +1,9 @@
-import { statSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import type { RunOptions } from "./agent/runner";
+import { loadConfig } from "./config/load";
+import type { ResidentConfig } from "./config/schema";
 import { createApp } from "./slack/app";
 
 const botToken = process.env.SLACK_BOT_TOKEN;
@@ -11,65 +14,98 @@ if (!botToken || !appToken) {
   process.exit(1);
 }
 
+const customConfigPath = process.env.RESIDENT_CONFIG;
+const CONFIG_PATH = customConfigPath ?? join(homedir() || ".", ".resident", "config.toml");
+
+// Explicit RESIDENT_CONFIG must load (no silent fallback); the default path is optional.
+let cfg: ResidentConfig | null = null;
+if (customConfigPath || existsSync(CONFIG_PATH)) {
+  try {
+    cfg = await loadConfig(CONFIG_PATH);
+    console.log(`resident: loaded config from ${CONFIG_PATH}`);
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 const rawTimeout = process.env.RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS?.trim();
-const SHUTDOWN_DRAIN_TIMEOUT_MS = rawTimeout ? Number(rawTimeout) : 60_000;
-if (!Number.isInteger(SHUTDOWN_DRAIN_TIMEOUT_MS) || SHUTDOWN_DRAIN_TIMEOUT_MS < 0) {
+const envTimeout = rawTimeout ? Number(rawTimeout) : 60_000;
+if (!Number.isInteger(envTimeout) || envTimeout < 0) {
   console.error(
     `error: invalid RESIDENT_SHUTDOWN_DRAIN_TIMEOUT_MS: "${rawTimeout}" (expected non-negative integer)`,
   );
   process.exit(1);
 }
+const SHUTDOWN_DRAIN_TIMEOUT_MS = cfg?.shutdown.drain_timeout_ms ?? envTimeout;
 
 const shutdownAbortController = new AbortController();
 
 const rawMaxConcurrent = process.env.RESIDENT_MAX_CONCURRENT_MENTIONS?.trim();
-const maxConcurrentMentions = rawMaxConcurrent ? Number(rawMaxConcurrent) : 10;
-if (!Number.isInteger(maxConcurrentMentions) || maxConcurrentMentions < 1) {
+const envMaxConcurrent = rawMaxConcurrent ? Number(rawMaxConcurrent) : 10;
+if (!Number.isInteger(envMaxConcurrent) || envMaxConcurrent < 1) {
   console.error(
     `error: invalid RESIDENT_MAX_CONCURRENT_MENTIONS: "${rawMaxConcurrent}" (expected positive integer)`,
   );
   process.exit(1);
 }
+const maxConcurrentMentions = cfg?.mention.max_concurrent ?? envMaxConcurrent;
 
-const rawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
-const allowedUsers = rawAllowed
+const envRawAllowed = process.env.RESIDENT_ALLOWED_USERS?.trim();
+const envAllowedUsers = envRawAllowed
   ? new Set(
-      rawAllowed
+      envRawAllowed
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
     )
   : null;
+const cfgAllowedUsers = cfg?.mention.allowed_users;
+const allowedUsers =
+  cfgAllowedUsers === undefined
+    ? envAllowedUsers
+    : cfgAllowedUsers === null
+      ? null
+      : new Set(cfgAllowedUsers);
 
 if (allowedUsers === null) {
   console.warn(
-    "resident: RESIDENT_ALLOWED_USERS not set — every channel member can invoke the agent. Set it to a CSV of Slack user IDs to restrict access.",
+    "resident: allowed_users is unset — every channel member can invoke the agent. Set mention.allowed_users in config or RESIDENT_ALLOWED_USERS to restrict.",
   );
 }
 
-const rawWorkspace = process.env.RESIDENT_WORKSPACE?.trim();
-let workspacePath: string | undefined;
-if (rawWorkspace) {
-  workspacePath = resolve(rawWorkspace);
-  if (!statSync(workspacePath, { throwIfNoEntry: false })?.isDirectory()) {
-    console.error(`error: RESIDENT_WORKSPACE "${rawWorkspace}" is not an existing directory`);
+const envRawWorkspace = process.env.RESIDENT_WORKSPACE?.trim();
+let envWorkspacePath: string | undefined;
+if (envRawWorkspace) {
+  envWorkspacePath = resolve(envRawWorkspace);
+  if (!statSync(envWorkspacePath, { throwIfNoEntry: false })?.isDirectory()) {
+    console.error(`error: RESIDENT_WORKSPACE "${envRawWorkspace}" is not an existing directory`);
     process.exit(1);
   }
 }
+const workspacePath = cfg?.runner.workspace?.path ?? envWorkspacePath;
+
+const mcpServers: Record<
+  string,
+  { command: string; args: string[]; env?: Record<string, string> }
+> = {
+  ...(cfg?.mcp_servers ?? {}),
+};
+if (workspacePath) {
+  mcpServers.filesystem = {
+    command: "npx",
+    args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
+  };
+}
+const hasMcp = Object.keys(mcpServers).length > 0;
 
 const runOptions: RunOptions = {
-  systemPrompt: process.env.RESIDENT_SYSTEM_PROMPT?.trim() || undefined,
-  model: process.env.RESIDENT_MODEL?.trim() || undefined,
-  mcpServers: workspacePath
-    ? {
-        filesystem: {
-          command: "npx",
-          args: ["-y", "@modelcontextprotocol/server-filesystem@2026.1.14", workspacePath],
-        },
-      }
-    : undefined,
-  permissionMode: workspacePath ? "bypassPermissions" : undefined,
-  allowDangerouslySkipPermissions: workspacePath ? true : undefined,
+  systemPrompt:
+    cfg?.runner.system_prompt ?? (process.env.RESIDENT_SYSTEM_PROMPT?.trim() || undefined),
+  model: cfg?.runner.model ?? (process.env.RESIDENT_MODEL?.trim() || undefined),
+  mcpServers: hasMcp ? mcpServers : undefined,
+  permissionMode: hasMcp ? "bypassPermissions" : undefined,
+  allowDangerouslySkipPermissions: hasMcp ? true : undefined,
   abortController: shutdownAbortController,
 };
 
