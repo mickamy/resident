@@ -84,8 +84,10 @@ export async function loadConfig(
     const raw = cfg.runner.workspace.path;
     const absolute = isAbsolute(raw) ? raw : resolve(dirname(path), raw);
     try {
-      const statResult = await stat(absolute, { throwIfNoEntry: false });
-      if (!statResult?.isDirectory()) {
+      // fs.promises.stat does not honor `throwIfNoEntry` (that option is statSync-only on Node),
+      // so handle ENOENT explicitly rather than relying on a sentinel undefined.
+      const statResult = await stat(absolute);
+      if (!statResult.isDirectory()) {
         throw new Error(
           `runner.workspace.path "${raw}" (resolved to "${absolute}") is not an existing directory`,
         );
@@ -93,6 +95,11 @@ export async function loadConfig(
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("runner.workspace.path")) {
         throw error;
+      }
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") {
+        throw new Error(
+          `runner.workspace.path "${raw}" (resolved to "${absolute}") is not an existing directory`,
+        );
       }
       throw new Error(`runner.workspace.path "${raw}" could not be accessed: ${describe(error)}`);
     }
