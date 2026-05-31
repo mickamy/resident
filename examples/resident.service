@@ -1,0 +1,55 @@
+# Sample systemd unit for running the resident daemon.
+#
+# Install:
+#   sudo cp examples/resident.service /etc/systemd/system/resident.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now resident
+#   sudo journalctl -u resident -f
+#
+# Customize: ExecStart, User/Group, Environment values, and the Environment file path.
+# Secrets (SLACK_*, ANTHROPIC_API_KEY) should NOT live inline here — point EnvironmentFile
+# at a 0600 file owned by the resident user.
+
+[Unit]
+Description=resident — Slack-resident Claude bot daemon
+Documentation=https://github.com/mickamy/resident
+After=network-online.target
+Wants=network-online.target
+
+# Cap restart storms: if the unit exits >5 times within 60s, hold off.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=resident
+Group=resident
+
+# Working directory must contain the resident checkout (so `bun src/daemon.ts` resolves).
+# Once `bun build --compile` produces a single-binary release, switch ExecStart to the
+# installed binary path (e.g. /usr/local/bin/resident-daemon) and drop WorkingDirectory.
+WorkingDirectory=/opt/resident
+ExecStart=/usr/local/bin/bun src/daemon.ts
+
+# Restart policy: stay up across crashes, with a small backoff to avoid tight loops.
+Restart=always
+RestartSec=5s
+
+# Resource isolation. Tighten further once the daemon's filesystem footprint is locked in.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/resident
+
+# Logs go to journald; query with `journalctl -u resident`.
+StandardOutput=journal
+StandardError=journal
+
+# Secrets — keep these in /etc/resident/env (chmod 0600, owned by resident:resident),
+# not inline. EnvironmentFile lines are line-delimited KEY=VALUE.
+EnvironmentFile=/etc/resident/env
+# RESIDENT_CONFIG=/etc/resident/config.toml  (optional; uncomment in the env file)
+
+[Install]
+WantedBy=multi-user.target

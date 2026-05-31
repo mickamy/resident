@@ -6,6 +6,24 @@ import { loadConfig } from "./config/load";
 import type { ResidentConfig } from "./config/schema";
 import { createApp } from "./slack/app";
 
+// Log and exit on any unhandled top-level failure so the process supervisor (systemd,
+// Docker `restart: always`, …) sees a non-zero exit and restarts cleanly instead of the
+// process limping on with an unrecoverable error.
+process.on("uncaughtException", (error) => {
+  console.error(
+    "resident: uncaughtException:",
+    error instanceof Error ? (error.stack ?? error.message) : String(error),
+  );
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error(
+    "resident: unhandledRejection:",
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
+  );
+  process.exit(1);
+});
+
 const botToken = process.env.SLACK_BOT_TOKEN;
 const appToken = process.env.SLACK_APP_TOKEN;
 
