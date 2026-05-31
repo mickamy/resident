@@ -1,5 +1,3 @@
-import { statSync } from "node:fs";
-import { resolve as resolvePath } from "node:path";
 import { z } from "zod";
 
 export const DEFAULTS = {
@@ -119,27 +117,7 @@ const RunnerWorkspaceSchema = z
   .object({
     path: z.string().min(1),
   })
-  .strict()
-  .transform((v) => ({ path: resolvePath(v.path) }))
-  .superRefine((v, ctx) => {
-    try {
-      // throwIfNoEntry:false suppresses ENOENT but other fs errors (EACCES, ELOOP, ...) still throw.
-      const stat = statSync(v.path, { throwIfNoEntry: false });
-      if (!stat?.isDirectory()) {
-        ctx.addIssue({
-          code: "custom",
-          message: `runner.workspace.path "${v.path}" is not an existing directory`,
-        });
-      }
-    } catch (error) {
-      ctx.addIssue({
-        code: "custom",
-        message: `runner.workspace.path "${v.path}" could not be accessed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      });
-    }
-  });
+  .strict();
 
 const RunnerSchema = z
   .object({

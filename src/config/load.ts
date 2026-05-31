@@ -1,4 +1,6 @@
+import { statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { type ResidentConfig, ResidentConfigSchema } from "./schema";
 
@@ -70,11 +72,35 @@ export async function loadConfig(
     throw new Error(`failed to interpolate env in ${path}: ${describe(error)}`);
   }
 
+  let cfg: ResidentConfig;
   try {
-    return ResidentConfigSchema.parse(interpolated);
+    cfg = ResidentConfigSchema.parse(interpolated);
   } catch (error) {
     throw new Error(`config at ${path} did not match schema: ${describe(error)}`);
   }
+
+  // Resolve runner.workspace.path relative to the config file's directory and verify it exists.
+  // Keeping this out of the Zod schema avoids coupling validation to `process.cwd()` and side effects.
+  if (cfg.runner.workspace) {
+    const raw = cfg.runner.workspace.path;
+    const absolute = isAbsolute(raw) ? raw : resolve(dirname(path), raw);
+    try {
+      const stat = statSync(absolute, { throwIfNoEntry: false });
+      if (!stat?.isDirectory()) {
+        throw new Error(
+          `runner.workspace.path "${raw}" (resolved to "${absolute}") is not an existing directory`,
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("runner.workspace.path")) {
+        throw error;
+      }
+      throw new Error(`runner.workspace.path "${raw}" could not be accessed: ${describe(error)}`);
+    }
+    cfg.runner.workspace.path = absolute;
+  }
+
+  return cfg;
 }
 
 function describe(error: unknown): string {

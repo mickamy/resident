@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve as resolvePath } from "node:path";
+import { join } from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { interpolateEnv, loadConfig } from "./load";
 import { ResidentConfigSchema } from "./schema";
@@ -85,12 +85,11 @@ max_concurrent = 5
     expect(cfg.mention.max_concurrent).toBe(5);
   });
 
-  test("resolves and validates runner.workspace.path", () => {
-    expect(() =>
-      ResidentConfigSchema.parse({ runner: { workspace: { path: "/no/such/dir/exists/here" } } }),
-    ).toThrow(/not an existing directory/);
-    const cfg = ResidentConfigSchema.parse({ runner: { workspace: { path: "." } } });
-    expect(cfg.runner.workspace?.path).toBe(resolvePath("."));
+  test("keeps runner.workspace.path verbatim at the schema layer", () => {
+    // Path resolution and fs validation now live in loadConfig (config-file-dir relative),
+    // so the schema accepts the raw string without touching the filesystem.
+    const cfg = ResidentConfigSchema.parse({ runner: { workspace: { path: "./repos" } } });
+    expect(cfg.runner.workspace?.path).toBe("./repos");
   });
 
   test("rejects empty allowed_users (use null for allow-all)", () => {
