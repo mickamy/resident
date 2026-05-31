@@ -255,9 +255,10 @@ export type HandleAlertDeps = {
  * find rather than relying on `text` alone.
  */
 export function getAlertText(ev: Record<string, unknown>): string {
-  const parts: string[] = [];
+  // Use a Set so identical strings (e.g., text == fallback in many integrations) don't get repeated.
+  const parts = new Set<string>();
   const pushIfString = (v: unknown) => {
-    if (typeof v === "string" && v.trim()) parts.push(v.trim());
+    if (typeof v === "string" && v.trim()) parts.add(v.trim());
   };
   pushIfString(ev.text);
   if (Array.isArray(ev.attachments)) {
@@ -280,7 +281,7 @@ export function getAlertText(ev: Record<string, unknown>): string {
       }
     }
   }
-  return parts.join("\n").trim();
+  return Array.from(parts).join("\n").trim();
 }
 
 export function findAlertTrigger(

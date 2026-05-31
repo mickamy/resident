@@ -227,6 +227,20 @@ describe("getAlertText", () => {
     ).toBe("real body");
   });
 
+  test("collapses duplicate strings (text == fallback) without repeating them", () => {
+    const out = getAlertText({
+      text: "Triggered: HighCPU",
+      attachments: [
+        {
+          text: "Triggered: HighCPU",
+          fallback: "Triggered: HighCPU",
+          fields: [{ title: "host", value: "web-01" }],
+        },
+      ],
+    });
+    expect(out).toBe("Triggered: HighCPU\nhost\nweb-01");
+  });
+
   test("returns empty string when nothing usable is present", () => {
     expect(getAlertText({})).toBe("");
     expect(getAlertText({ text: "   ", attachments: [] })).toBe("");
